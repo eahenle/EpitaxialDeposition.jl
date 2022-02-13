@@ -7,16 +7,13 @@ using InteractiveUtils
 # ╔═╡ 7e17fa70-86c6-11ec-1a61-41e7e9a383ec
 using Catalyst, DifferentialEquations, Latexify, CairoMakie, DataFrames
 
-# ╔═╡ 95380e84-d641-4d7b-9a74-671cbae71f42
-rate = :k₁
-
 # ╔═╡ b19b9c91-cd90-4aec-8bb6-2ef0b2c2b449
 batch_series = @reaction_network BatchSeries begin
 
-	k₁, A --> B
-	k₂, B --> C
+	α, A --> B
+	β, B --> C
 
-end k₁ k₂
+end α β
 
 # ╔═╡ a497925b-d57b-442b-80ed-bea47c31c706
 species(batch_series)
@@ -28,7 +25,7 @@ parameters(batch_series)
 odesys = convert(ODESystem, batch_series)
 
 # ╔═╡ 531b1ca0-e767-40df-97a8-895f38ef05a8
-pmap = [:k₁ => 0.5, :k₂ => 0.3]
+pmap = [:α => 1.0/6.0, :β => 1.0/4.0]
 
 # ╔═╡ 24a3badf-f721-415e-a809-8b8dc5538be1
 u₀map = [:A => 1., :B => 0., :C => 0.]
@@ -37,7 +34,7 @@ u₀map = [:A => 1., :B => 0., :C => 0.]
 begin
 	# Let's simulate this 
 	
-	timespan = (0.0, 30.0)
+	timespan = (0.0, 60.0)
 	
 	prob = ODEProblem(batch_series, u₀map, timespan, pmap)
 
@@ -1899,7 +1896,6 @@ version = "3.5.0+0"
 
 # ╔═╡ Cell order:
 # ╠═7e17fa70-86c6-11ec-1a61-41e7e9a383ec
-# ╠═95380e84-d641-4d7b-9a74-671cbae71f42
 # ╠═b19b9c91-cd90-4aec-8bb6-2ef0b2c2b449
 # ╠═a497925b-d57b-442b-80ed-bea47c31c706
 # ╠═c077c655-419b-49f9-8d92-af80dc18c3a9
