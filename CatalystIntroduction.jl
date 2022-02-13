@@ -22,17 +22,22 @@ species(batch_series)
 parameters(batch_series)
 
 # ╔═╡ 5c055475-23d6-4b1e-81ac-66232be73780
-odesys = convert(ODESystem, batch_series)
+
 
 # ╔═╡ 531b1ca0-e767-40df-97a8-895f38ef05a8
-pmap = [:α => 1.0/6.0, :β => 1.0/4.0]
+
 
 # ╔═╡ 24a3badf-f721-415e-a809-8b8dc5538be1
-u₀map = [:A => 1., :B => 0., :C => 0.]
+
 
 # ╔═╡ a2618fba-7e9a-4fb9-9906-242d6b8bc283
 begin
 	# Let's simulate this 
+
+	
+	local odesys = convert(ODESystem, batch_series)
+	local pmap = [:α => 1.0/6.0, :β => 1.0/4.0]
+	local u₀map = [:A => 1., :B => 0., :C => 0.]
 	
 	timespan = (0.0, 60.0)
 	
@@ -57,8 +62,104 @@ begin
 	lines!(sol[:, :timestamp], sol[:, "C(t)"])
 
 	fig
+
+	# fig = figure(title = "random")
+
+	# plot(sol[:, :timestamp], sol[:, "A(t)"])
+	# plot(sol[:, :timestamp], sol[:, "B(t)"])
+
+	# fig
+	
+end
+
+# ╔═╡ 96df1a34-a1c0-4785-b5de-bb22426d8888
+silicon_process = @reaction_network SiliconGrowth begin
+
+	(kf1, kb1), SiCl₄ + H₂ <--> SiCl₂ + 2HCl #rxn 1
+
+	(kf2, kb2), SiCl₄ + H₂ <--> SiCl₃H + HCl #rxn 2
+
+	(kf3, kb3), SiCl₃H + H₂ <--> SiCl₂H₂ + HCl #rxn 3
+
+	(kf4, kb4), SiCl₂H₂ + H₂ <--> SiClH₃ + HCl #rxn 4
+
+	(kf5, kb5), SiClH₃ + H₂ <--> SiH₄ + HCl #rxn 5
+
+	(kf6, kb6), SiCl₄ + 2H₂ <--> Si + 4HCl #rxn 6
+	
+end kf1 kf2 kf3 kf4 kf5 kf6 kb1 kb2 kb3 kb4 kb5 kb6
+
+# ╔═╡ 9950524f-18c5-4c13-9ec3-ab3865622179
+parameters(silicon_process)
+
+# ╔═╡ a96715a9-ea18-4fb7-96d2-6086fe18571d
+
+
+# ╔═╡ 41d8425a-0c29-48b2-97fc-d1c4fc49df67
+function kf(T::Float64)
+
+	193018*exp(10000/8.314 * (1/385 - 1/T))
+	
+end
+
+# ╔═╡ 214b86c5-2aa9-42e3-855f-416e94a76550
+function kb(T::Float64)
+
+	10293*exp(8000/8.314 * (1/298 - 1/T))
+	
+end
+
+# ╔═╡ c986672c-e787-41fc-9a25-63f498f24d4b
+begin
+	@register kf(T) 
+	@register kb(T)
+end
+
+# ╔═╡ 1b12f164-be6e-444c-bba8-c27b1cccb730
+deposition = @reaction_network begin
+	
+	(kf(T), kb(T)), SiCl₄ + 2H₂ <--> Si + 4HCl #rxn 6
+
+end 
+
+# ╔═╡ 21426370-833c-4377-a88e-55ef22179792
+parameters(deposition)
+
+# ╔═╡ 6bc912ba-7bea-4512-96bf-1f14d3e87db9
+species(deposition)
+
+# ╔═╡ 57abbd90-8670-4117-ae4c-dce562abe162
+begin
+
+	odesys2 = convert(ODESystem, deposition, combinatoric_ratelaws=false)
+
+	# pmap2 = [:kf => 0.025, :kb => 0.02]
+	u₀map2 = [:SiCl₄ => 3.0, :H₂ => 1.0, :Si => 0.0, :HCl => 0, :T => 70]
+	
+	timespan2 = (0.0, 60.0)
+	
+	prob2 = ODEProblem(deposition, u₀map2, timespan2)
+
+	sol2 = DataFrame(solve(prob2, Tsit5(), saveat=0.05, maxiters=1e8))
+
 	
 	
+end
+
+# ╔═╡ db312b27-f0f5-47de-a074-1a2a8db3d62b
+begin
+fig2 = Figure()
+	ax2 = Axis(fig2[1,1],
+	title = "Deposition Reaction",
+	ylabel="Species Concentration",
+	xlabel="Time [s]")
+
+		lines!(sol2[:, :timestamp], sol2[:, "SiCl₄(t)"])
+		lines!(sol2[:, :timestamp], sol2[:, "H₂(t)"])
+		lines!(sol2[:, :timestamp], sol2[:, "HCl(t)"])
+		lines!(sol2[:, :timestamp], sol2[:, "Si(t)"])
+
+	fig2
 end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
@@ -270,9 +371,9 @@ version = "0.4.0"
 
 [[deps.ColorSchemes]]
 deps = ["ColorTypes", "Colors", "FixedPointNumbers", "Random"]
-git-tree-sha1 = "6b6f04f93710c71550ec7e16b650c1b9a612d0b6"
+git-tree-sha1 = "12fc73e5e0af68ad3137b886e3f7c1eacfca2640"
 uuid = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
-version = "3.16.0"
+version = "3.17.1"
 
 [[deps.ColorTypes]]
 deps = ["FixedPointNumbers", "Random"]
@@ -550,9 +651,9 @@ version = "0.3.2"
 
 [[deps.FileIO]]
 deps = ["Pkg", "Requires", "UUIDs"]
-git-tree-sha1 = "67551df041955cc6ee2ed098718c8fcd7fc7aebe"
+git-tree-sha1 = "80ced645013a5dbdc52cf70329399c35ce007fae"
 uuid = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
-version = "1.12.0"
+version = "1.13.0"
 
 [[deps.FillArrays]]
 deps = ["LinearAlgebra", "Random", "SparseArrays", "Statistics"]
@@ -712,10 +813,10 @@ uuid = "a09fc81d-aa75-5fe9-8630-4744c3626534"
 version = "0.9.3"
 
 [[deps.ImageIO]]
-deps = ["FileIO", "Netpbm", "OpenEXR", "PNGFiles", "QOI", "Sixel", "TiffImages", "UUIDs"]
-git-tree-sha1 = "816fc866edd8307a6e79a575e6585bfab8cef27f"
+deps = ["FileIO", "JpegTurbo", "Netpbm", "OpenEXR", "PNGFiles", "QOI", "Sixel", "TiffImages", "UUIDs"]
+git-tree-sha1 = "464bdef044df52e6436f8c018bea2d48c40bb27b"
 uuid = "82e4d734-157c-48bb-816b-45c225c6df19"
-version = "0.6.0"
+version = "0.6.1"
 
 [[deps.Imath_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -809,6 +910,18 @@ deps = ["Dates", "Mmap", "Parsers", "Unicode"]
 git-tree-sha1 = "8076680b162ada2a031f707ac7b4953e30667a37"
 uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 version = "0.21.2"
+
+[[deps.JpegTurbo]]
+deps = ["CEnum", "FileIO", "ImageCore", "JpegTurbo_jll", "TOML"]
+git-tree-sha1 = "a77b273f1ddec645d1b7c4fd5fb98c8f90ad10a5"
+uuid = "b835a17e-a41a-41e7-81f0-2f016b05efe0"
+version = "0.1.1"
+
+[[deps.JpegTurbo_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "b53380851c6e6664204efb2e62cd24fa5c47e4ba"
+uuid = "aacddb02-875f-59d6-b918-886e6ef4fbf8"
+version = "2.1.2+0"
 
 [[deps.JuliaFormatter]]
 deps = ["CSTParser", "CommonMark", "DataStructures", "Pkg", "Tokenize"]
@@ -1207,9 +1320,9 @@ version = "0.5.11"
 
 [[deps.Pango_jll]]
 deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "FriBidi_jll", "Glib_jll", "HarfBuzz_jll", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "9bc1871464b12ed19297fbc56c4fb4ba84988b0d"
+git-tree-sha1 = "3a121dfbba67c94a5bec9dde613c3d0cbcf3a12b"
 uuid = "36c8627f-9965-5494-a995-c6b170f724f3"
-version = "1.47.0+0"
+version = "1.50.3+0"
 
 [[deps.Parameters]]
 deps = ["OrderedCollections", "UnPack"]
@@ -1904,5 +2017,16 @@ version = "3.5.0+0"
 # ╠═24a3badf-f721-415e-a809-8b8dc5538be1
 # ╠═a2618fba-7e9a-4fb9-9906-242d6b8bc283
 # ╠═fa5cb956-5d01-4784-86d1-d98d832d9a84
+# ╠═96df1a34-a1c0-4785-b5de-bb22426d8888
+# ╠═9950524f-18c5-4c13-9ec3-ab3865622179
+# ╠═a96715a9-ea18-4fb7-96d2-6086fe18571d
+# ╠═41d8425a-0c29-48b2-97fc-d1c4fc49df67
+# ╠═214b86c5-2aa9-42e3-855f-416e94a76550
+# ╠═c986672c-e787-41fc-9a25-63f498f24d4b
+# ╠═1b12f164-be6e-444c-bba8-c27b1cccb730
+# ╠═21426370-833c-4377-a88e-55ef22179792
+# ╠═6bc912ba-7bea-4512-96bf-1f14d3e87db9
+# ╠═57abbd90-8670-4117-ae4c-dce562abe162
+# ╠═db312b27-f0f5-47de-a074-1a2a8db3d62b
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
