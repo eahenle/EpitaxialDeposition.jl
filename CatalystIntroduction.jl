@@ -21,19 +21,9 @@ species(batch_series)
 # ╔═╡ c077c655-419b-49f9-8d92-af80dc18c3a9
 parameters(batch_series)
 
-# ╔═╡ 5c055475-23d6-4b1e-81ac-66232be73780
-
-
-# ╔═╡ 531b1ca0-e767-40df-97a8-895f38ef05a8
-
-
-# ╔═╡ 24a3badf-f721-415e-a809-8b8dc5538be1
-
-
 # ╔═╡ a2618fba-7e9a-4fb9-9906-242d6b8bc283
 begin
-	# Let's simulate this 
-
+	# Let's simulate this batch series process
 	
 	local odesys = convert(ODESystem, batch_series)
 	local pmap = [:α => 1.0/6.0, :β => 1.0/4.0]
@@ -91,9 +81,6 @@ end kf1 kf2 kf3 kf4 kf5 kf6 kb1 kb2 kb3 kb4 kb5 kb6
 
 # ╔═╡ 9950524f-18c5-4c13-9ec3-ab3865622179
 parameters(silicon_process)
-
-# ╔═╡ a96715a9-ea18-4fb7-96d2-6086fe18571d
-
 
 # ╔═╡ 41d8425a-0c29-48b2-97fc-d1c4fc49df67
 function kf(T::Float64)
@@ -2012,14 +1999,10 @@ version = "3.5.0+0"
 # ╠═b19b9c91-cd90-4aec-8bb6-2ef0b2c2b449
 # ╠═a497925b-d57b-442b-80ed-bea47c31c706
 # ╠═c077c655-419b-49f9-8d92-af80dc18c3a9
-# ╠═5c055475-23d6-4b1e-81ac-66232be73780
-# ╠═531b1ca0-e767-40df-97a8-895f38ef05a8
-# ╠═24a3badf-f721-415e-a809-8b8dc5538be1
 # ╠═a2618fba-7e9a-4fb9-9906-242d6b8bc283
 # ╠═fa5cb956-5d01-4784-86d1-d98d832d9a84
 # ╠═96df1a34-a1c0-4785-b5de-bb22426d8888
 # ╠═9950524f-18c5-4c13-9ec3-ab3865622179
-# ╠═a96715a9-ea18-4fb7-96d2-6086fe18571d
 # ╠═41d8425a-0c29-48b2-97fc-d1c4fc49df67
 # ╠═214b86c5-2aa9-42e3-855f-416e94a76550
 # ╠═c986672c-e787-41fc-9a25-63f498f24d4b
