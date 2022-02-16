@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.5
+# v0.17.7
 
 using Markdown
 using InteractiveUtils
@@ -22,7 +22,7 @@ md"
 
 # ╔═╡ b256ab46-4990-4e6a-8966-453790fa774b
 md"
-**Reactors and Systems** \
+## **Reactors and Systems** 
 There are two main ways of producing thin films:
 - Physical vapor deposition (PVD)
 - Chemical vapor deposition (CVD)
@@ -35,9 +35,9 @@ There are also many types of CVD, such as
 - *Ambient pressure* (AP) CVD 
 - *Low pressure* (LP) CVD - typically ranges from **10 mT to 1 T**, to increase diffusion and the mean free path of gases in moving toward the substrate
 - *Plasma enhanced* (PE) CVD - lowers overall reaction temperature, as the precursors are heated to plasma, which react quickly with the substrate surface
-- *Vapor phase epitaxy* - having a single crystal subtrate act as a template for a film of identical or similar crystal structure
+- *Vapor phase epitaxy* (VPE) - having a single crystal subtrate act as a template for a film of identical or similar crystal structure
 
-**Chemistry** \
+ ## **Chemistry**
 Both heterogeneous and homogeneous reactions are part of the CVD process.
 
 *insert image*
@@ -61,9 +61,83 @@ Wafers used in the semiconductor industry are produced via **VPE** where there a
 
 "
 
+# ╔═╡ 60fccd3e-e87b-49b5-b073-dc16dc4e0c92
+md"
+## **Mathematical Modeling**
+
+Source: \"Modelling of silicon epitaxy using silicon trichloride as the source\", by *D.K. Pal, M.K. Kowar, A.N. Daw, and P. Roy*
+
+This paper proposes a growth-rate model based on chemical kinetics for VPE of silicon, using **SiCl₄** as a source, in a **horizontal rectangular reactor at atmospheric pressure**. The model includes factors such as **temperature, flow rate, mole fraction, and position,** and the model agrees well with experimental data available.
+
+A few resources are referenced in this paper which seem to cover epitaxy at low pressures:
+- \[11\] *K.F. Jensen and D.B. Graves, Modelling and analysis of low pressure CVD reactor, J. Electrochem. Soc., 131 (1983) 1950.*
+- \[12\] *M.G. Joshi, Modelling of LPCVD reactors, J. Electrochem. Soc., 134 (1987) 318.*
+
+A simplified reaction scheme is described:
+1. ``SiCl_4 + 2H_2 \rightarrow Si (s) + 4HCl``, deposition of Si on the substrate surface
+2. ``Si + 2HCl \rightarrow SiCl_2 + H_2``, etching of Si by HCl
+3. ``SiCl_4 + Si (s) \rightarrow 2SiCl_2``, an additional etching reaction, when the concentration of SiCl₄ is in the mixture is large
+
+<s>We note an additional reaction set which deals with the extremely unstable and short-lived SiCl₂:
+4. ``SiCl_2 + H_2 \rightarrow SiCl_2H_2``<\s>
+
+"
+
+# ╔═╡ e2678619-a552-4397-af1b-f657c03c58a8
+md"
+## **Article Nomenclature and Kinetic Data**
+
+The final models for total silicon deposition rate, *F*, and total silicon film growth rate, *G*, are given in the paper.
+
+1. **Silicon deposition rate:** ``F = (H(C_{BS}-C_{SS})-K_3C_{SS}) \left[1-\frac{2K_2}{H_{HCl}+K_2} \right] - K_3C_{SS}``
+
+* ``H`` = gas phase mass transfer coefficient of SiCl₄, ``D(\frac{\eta X}{\rho V})^{-1/2}``
+  * D = diffusivity of SiCl₄ in H₂
+  * ``\eta`` = viscosity of the carrier gas
+  * ``\rho`` = density of the carrier gas
+  * ``X`` = the point along the x-direction in the reactor
+* ``H_{HCl}`` = gas phase mass transfer coefficient of HCl, the value of which is reported to be ~3x that of H
+* ``C_{BS}`` = bulk concentration of SiCl₄
+* ``C_{SS}`` = concentration of SiCl₄ in the gas phase adjacent to growing film
+* ``K_2`` = the rate constant for reaction (2), the surface reaction of HCl with Si, ``K_2 = K_{20}exp[\frac{-E_{a2}}{RT}]``
+* ``K_3`` = the rate constant for reaction (3), the surface reaction of SiCl₄ on Si, ``K_3 = K_{30}exp[\frac{-E_{a3}}{RT}]``
+
+2. **Silicon film growth rate:** ``G = \frac{F}{N}``
+
+* ``N`` = number of silicon atoms incorporated in a unit volume of the film
+
+Values of the various reaction constants presented are not available in literature (at the time of publishing) and have been estimated numerically to be:
+
+* ``K_{20} = 39.3886 \frac{cm}{s}``, ``E_{a2} = 17.490 \frac{kcal}{mol}``
+* ``K_{30} = 952.058 \frac{cm}{s}``, ``E_{a3} = 21.721 \frac{kcal}{mol}``
+
+"
+
+# ╔═╡ f58b39cc-3a7c-4b30-bda5-6c837c2450cd
+begin
+	article_symbols = [:F, :G]
+	
+	definitions = [
+		md"Total rate of silicon deposition on the substrate", 
+		md"Total rate of silicon film growth on the substrate", 
+	]
+		# md"Bulk concentration of SiCl₄", 
+		# md"Concentration of SiCl₄ in the gas phase adjacent to the growing surface"
+	math_definitions = [
+		md"$F_{1} = (H(C_{BS}-C_{SS}) - K_3C_{SS}) \left[ 1- \frac{2K_2}{H_{HCl}+K_2} \right]$",
+		md"$D{{\left( \frac{\eta X} {\rho V} \right)}^{-1/2}}$"
+	]
+	
+	DataFrame("Article Symbols" => article_symbols, 
+			"Definition" => definitions, 
+			"Symbolics" => math_definitions)
+	
+	
+end
+
 # ╔═╡ d71c6526-32b9-4351-ae3e-2bfcc2d17b13
 md"
-**CVD Kinetics**
+**Mathematical Modeling**
 
 If we treat the wafer as a flat plate, viscous flow of the gas past the wafer leads to the production of a boundary layer, owing to friction
 
@@ -73,15 +147,6 @@ We define the y-direction to be the width of the boundary layer, with y = 0 at t
 
 Flux in the (x,y) directions can be represented: ``J(x,y) = C(x,y)v-\mathscr{D}∇C(x,y)``, where ``v`` is the bulk fluid velocity, and ``\mathscr{D}`` is the diffusion coefficient.
 "
-
-# ╔═╡ f58b39cc-3a7c-4b30-bda5-6c837c2450cd
-begin
-	species = [md"Silane", md"Hydrogen", md"Silicon Dichloride"]
-	
-	DataFrame("Species" => species)
-	
-	
-end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -355,8 +420,10 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╠═185fce88-b4c3-4be7-84b4-7f2ce3db1c06
 # ╟─bdf2b950-8afe-11ec-1732-61696ed36c9b
 # ╟─82f306b3-0039-406e-a99a-68303ecdcfac
-# ╟─b256ab46-4990-4e6a-8966-453790fa774b
-# ╟─d71c6526-32b9-4351-ae3e-2bfcc2d17b13
+# ╠═b256ab46-4990-4e6a-8966-453790fa774b
+# ╠═60fccd3e-e87b-49b5-b073-dc16dc4e0c92
+# ╠═e2678619-a552-4397-af1b-f657c03c58a8
 # ╠═f58b39cc-3a7c-4b30-bda5-6c837c2450cd
+# ╟─d71c6526-32b9-4351-ae3e-2bfcc2d17b13
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
