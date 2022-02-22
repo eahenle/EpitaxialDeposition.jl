@@ -95,7 +95,7 @@ The final models for total silicon deposition rate, *F*, and total silicon film 
   * D = diffusivity of SiCl₄ in H₂
   * ``\eta`` = viscosity of the carrier gas
   * ``\rho`` = density of the carrier gas
-  * ``X`` = the point along the x-direction in the reactor
+  * ``X`` = the point along the x-direction in the (rectangular) reactor
 * ``H_{HCl}`` = gas phase mass transfer coefficient of HCl, the value of which is reported to be ~3x that of H
 * ``C_{BS}`` = bulk concentration of SiCl₄
 * ``C_{SS}`` = concentration of SiCl₄ in the gas phase adjacent to growing film
@@ -106,7 +106,7 @@ The final models for total silicon deposition rate, *F*, and total silicon film 
 
 * ``N`` = number of silicon atoms incorporated in a unit volume of the film
 
-Values of the various reaction constants presented are not available in literature (at the time of publishing) and have been estimated numerically to be:
+Values of the various reaction constants presented are not available in literature (at the time of publishing) and have been estimated numerically by the authors to be:
 
 * ``K_{20} = 39.3886 \frac{cm}{s}``, ``E_{a2} = 17.490 \frac{kcal}{mol}``
 * ``K_{30} = 952.058 \frac{cm}{s}``, ``E_{a3} = 21.721 \frac{kcal}{mol}``
