@@ -61,11 +61,15 @@ Wafers used in the semiconductor industry are produced via **VPE** where there a
 
 "
 
+# ╔═╡ 0ae4bec3-f8dd-4c99-b168-a3d48b113dda
+md"
+### Source 2: [\"Modelling of Si VPE using SiCl₄ as a Source \"](https://www.sciencedirect.com/science/article/pii/0026269295000127)
+"
+
 # ╔═╡ 60fccd3e-e87b-49b5-b073-dc16dc4e0c92
 md"
 ## **Mathematical Modeling**
 
-Source: \"Modelling of silicon epitaxy using silicon trichloride as the source\", by *D.K. Pal, M.K. Kowar, A.N. Daw, and P. Roy*
 
 This paper proposes a growth-rate model based on chemical kinetics for VPE of silicon, using **SiCl₄** as a source, in a **horizontal rectangular reactor at atmospheric pressure**. The model includes factors such as **temperature, flow rate, mole fraction, and position,** and the model agrees well with experimental data available.
 
@@ -99,6 +103,7 @@ The final models for total silicon deposition rate, *F*, and total silicon film 
 * ``H_{HCl}`` = gas phase mass transfer coefficient of HCl, the value of which is reported to be ~3x that of H
 * ``C_{BS}`` = bulk concentration of SiCl₄
 * ``C_{SS}`` = concentration of SiCl₄ in the gas phase adjacent to growing film
+* ``K_0`` = the rate constant for reaction (1), the surface reaction of HCl with Si, ``K_2 = K_{20}exp[\frac{-E_{a2}}{RT}]``
 * ``K_2`` = the rate constant for reaction (2), the surface reaction of HCl with Si, ``K_2 = K_{20}exp[\frac{-E_{a2}}{RT}]``
 * ``K_3`` = the rate constant for reaction (3), the surface reaction of SiCl₄ on Si, ``K_3 = K_{30}exp[\frac{-E_{a3}}{RT}]``
 
@@ -106,8 +111,9 @@ The final models for total silicon deposition rate, *F*, and total silicon film 
 
 * ``N`` = number of silicon atoms incorporated in a unit volume of the film
 
-Values of the various reaction constants presented are not available in literature (at the time of publishing) and have been estimated numerically by the authors to be:
+Values of the various reaction constants presented are not available in literature were estimated numerically by the authors to be:
 
+* ``K_{0} = 2950.94 \frac{cm}{s}``, ``E = 18.910 \frac{kcal}{mol}``
 * ``K_{20} = 39.3886 \frac{cm}{s}``, ``E_{a2} = 17.490 \frac{kcal}{mol}``
 * ``K_{30} = 952.058 \frac{cm}{s}``, ``E_{a3} = 21.721 \frac{kcal}{mol}``
 
@@ -134,19 +140,6 @@ begin
 	
 	
 end
-
-# ╔═╡ d71c6526-32b9-4351-ae3e-2bfcc2d17b13
-md"
-**Mathematical Modeling**
-
-If we treat the wafer as a flat plate, viscous flow of the gas past the wafer leads to the production of a boundary layer, owing to friction
-
-*insert image*
-
-We define the y-direction to be the width of the boundary layer, with y = 0 at the surface of the wafer, and y = δ at the top of the boundary layer. The x-direction is the direction of flow, with x = 0 at the start of the wafer, and x = L at the end.
-
-Flux in the (x,y) directions can be represented: ``J(x,y) = C(x,y)v-\mathscr{D}∇C(x,y)``, where ``v`` is the bulk fluid velocity, and ``\mathscr{D}`` is the diffusion coefficient.
-"
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -421,9 +414,9 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╟─bdf2b950-8afe-11ec-1732-61696ed36c9b
 # ╟─82f306b3-0039-406e-a99a-68303ecdcfac
 # ╟─b256ab46-4990-4e6a-8966-453790fa774b
-# ╟─60fccd3e-e87b-49b5-b073-dc16dc4e0c92
+# ╟─0ae4bec3-f8dd-4c99-b168-a3d48b113dda
+# ╠═60fccd3e-e87b-49b5-b073-dc16dc4e0c92
 # ╠═e2678619-a552-4397-af1b-f657c03c58a8
 # ╠═f58b39cc-3a7c-4b30-bda5-6c837c2450cd
-# ╟─d71c6526-32b9-4351-ae3e-2bfcc2d17b13
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
