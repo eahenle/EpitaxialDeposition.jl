@@ -103,7 +103,7 @@ The final models for total silicon deposition rate, *F*, and total silicon film 
 * ``H_{HCl}`` = gas phase mass transfer coefficient of HCl, the value of which is reported to be ~3x that of H
 * ``C_{BS}`` = bulk concentration of SiCl₄
 * ``C_{SS}`` = concentration of SiCl₄ in the gas phase adjacent to growing film
-* ``K_0`` = the rate constant for reaction (1), the surface reaction of HCl with Si, ``K_2 = K_{20}exp[\frac{-E_{a2}}{RT}]``
+* ``K_0`` = the rate constant for reaction (1), the surface reaction of Si with H₂, ``K_2 = K_{20}exp[\frac{-E_{a2}}{RT}]``
 * ``K_2`` = the rate constant for reaction (2), the surface reaction of HCl with Si, ``K_2 = K_{20}exp[\frac{-E_{a2}}{RT}]``
 * ``K_3`` = the rate constant for reaction (3), the surface reaction of SiCl₄ on Si, ``K_3 = K_{30}exp[\frac{-E_{a3}}{RT}]``
 
