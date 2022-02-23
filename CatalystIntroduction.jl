@@ -7,33 +7,6 @@ using InteractiveUtils
 # ╔═╡ 7e17fa70-86c6-11ec-1a61-41e7e9a383ec
 using Catalyst, DifferentialEquations, CairoMakie, DataFrames
 
-# ╔═╡ c077c655-419b-49f9-8d92-af80dc18c3a9
-parameters(batch_series)
-
-# ╔═╡ fa5cb956-5d01-4784-86d1-d98d832d9a84
-begin
-
-	fig = Figure()
-	ax = Axis(fig[1,1],
-		title="Batch Series Reaction",
-		xlabel="Time [s]",
-		ylabel="Species Concentration")
-
-	lines!(sol[:, :timestamp], sol[:, "A(t)"])
-	lines!(sol[:, :timestamp], sol[:, "B(t)"])
-	lines!(sol[:, :timestamp], sol[:, "C(t)"])
-
-	fig
-
-	# fig = figure(title = "random")
-
-	# plot(sol[:, :timestamp], sol[:, "A(t)"])
-	# plot(sol[:, :timestamp], sol[:, "B(t)"])
-
-	# fig
-	
-end
-
 # ╔═╡ 96df1a34-a1c0-4785-b5de-bb22426d8888
 silicon_process = @reaction_network SiliconGrowth begin
 
@@ -51,34 +24,65 @@ silicon_process = @reaction_network SiliconGrowth begin
 	
 end kf1 kf2 kf3 kf4 kf5 kf6 kb1 kb2 kb3 kb4 kb5 kb6
 
+# ╔═╡ e4cec0ae-04d4-4360-998d-5f367063662c
+begin
+	#define the computationally derived constants
+
+	K0 = 2950.94 #cm/s
+	K10 = 1.899e-16 #cm³
+	K20 = 39.3886 # cm/s
+	K30 = 952.058 #cm/s
+
+	E = 18.910 #kcal/mol
+	Ea1 = 10.620 #kcal/mol
+	Ea2 = 17.490 #kcal/mol
+	Ea3 = 21.721 #kcal/mol
+	R = 1.985e-3 # kcal/mol-K
+
+	k = 1 # random parameter for using Kp
+	
+end
+
 # ╔═╡ 9950524f-18c5-4c13-9ec3-ab3865622179
 parameters(silicon_process)
 
-# ╔═╡ 41d8425a-0c29-48b2-97fc-d1c4fc49df67
-function kf(T::Float64)
+# ╔═╡ fa30faba-fde2-4fd1-8040-0fb3050b6537
+K(T::Float64) = K0 * exp(-E / (R*T))
 
-	193018*exp(10000/8.314 * (1/385 - 1/T))
-	
-end
+# ╔═╡ 0a274653-5129-4bb3-96a1-742276fd098b
+K1(T::Float64) = K10*exp(-Ea1 / (R*T)) # [cm³]
+
+# ╔═╡ 41d8425a-0c29-48b2-97fc-d1c4fc49df67
+K2(T) = K20*exp(-Ea2 / (R*T))
 
 # ╔═╡ 214b86c5-2aa9-42e3-855f-416e94a76550
-function kb(T::Float64)
+K3(T) = K30*exp(-Ea3 / (R*T)) # units = 
 
-	10293*exp(8000/8.314 * (1/298 - 1/T))
-	
-end
+# ╔═╡ 9e99c1a5-8eb4-41a0-af8e-56142434967b
+kKp(T) = k*10^(10.38 - 16770/T) 
 
 # ╔═╡ c986672c-e787-41fc-9a25-63f498f24d4b
 begin
-	@register kf(T) 
-	@register kb(T)
+	# @register k
+	@register Kp(T)
+	@register K(T)
+	@register K2(T) 
+	@register K3(T)
 end
 
 # ╔═╡ 1b12f164-be6e-444c-bba8-c27b1cccb730
 deposition = @reaction_network begin
-	
-	(kf(T), kb(T)), SiCl₄ + 2H₂ <--> Si + 4HCl #rxn 6
 
+	# K(T), SiCl₄ + 2H₂ --> Si + 4HCl # deposition of Si on the surface, produces 											Si(dep)
+	K(T), SiCl₄ + 2H₂ --> Si_dep + 4HCl
+	
+	# K2(T), Si + 2HCl --> SiCl₂ + H₂ # competitive etching of Si by HCl
+	K2(T), 2HCl --> SiCl₂ + H₂ + Si_etch
+	
+	# K3(T), SiCl₄ + Si --> 2SiCl₂ # competitive etching of Si by SiCl₄
+	kKp(T), SiCl₄ --> 2SiCl₂ + Si_etch
+
+	k, 2SiCl₂ --> SiCl₄ + Si_dep 
 end 
 
 # ╔═╡ 21426370-833c-4377-a88e-55ef22179792
@@ -91,11 +95,18 @@ species(deposition)
 begin
 
 	odesys2 = convert(ODESystem, deposition, combinatoric_ratelaws=false)
+	# combinatoric_ratelaws = false makes it so that the rate laws are elementary with regard to stoichiometry, and coefficients aren't based on factorials
 
-	# pmap2 = [:kf => 0.025, :kb => 0.02]
-	u₀map2 = [:SiCl₄ => 3.0, :H₂ => 1.0, :Si => 0.0, :HCl => 0, :T => 70]
+	u₀map2 = [:SiCl₄ => 10.0, 
+			:H₂ => 10.0, 
+			:Si_dep => 0.0,
+			:Si_etch => 0.0,
+			:HCl => 0.0, 
+			:SiCl₂ => 0.0,
+			:k => k,
+			:T => 950]
 	
-	timespan2 = (0.0, 60.0)
+	timespan2 = (0.0, 30.0)
 	
 	prob2 = ODEProblem(deposition, u₀map2, timespan2)
 
@@ -105,18 +116,34 @@ begin
 	
 end
 
+# ╔═╡ 05db1f52-1c87-465f-8b1b-25e45aed6d0b
+odesys2
+
+# ╔═╡ d5bad535-7150-40a9-b319-0c86617264e1
+begin
+	a = sol2[1, "SiCl₄(t)"]
+	b = sol2[end, "SiCl₄(t)"] + sol2[end, "SiCl₂(t)"] + sol2[end, "Si_dep(t)"] - sol2[end, "Si_etch(t)"]
+
+	isapprox(a, b)
+end
+
 # ╔═╡ db312b27-f0f5-47de-a074-1a2a8db3d62b
 begin
 fig2 = Figure()
 	ax2 = Axis(fig2[1,1],
-	title = "Deposition Reaction",
+	title = "Gas Phase",
 	ylabel="Species Concentration",
 	xlabel="Time [s]")
+	
 
-		lines!(sol2[:, :timestamp], sol2[:, "SiCl₄(t)"])
-		lines!(sol2[:, :timestamp], sol2[:, "H₂(t)"])
-		lines!(sol2[:, :timestamp], sol2[:, "HCl(t)"])
-		lines!(sol2[:, :timestamp], sol2[:, "Si(t)"])
+		lines!(sol2[:, :timestamp], sol2[:, "SiCl₄(t)"], label="SiCl₄")
+		lines!(sol2[:, :timestamp], sol2[:, "H₂(t)"], label="H₂")
+		lines!(sol2[:, :timestamp], sol2[:, "HCl(t)"], label="HCl")
+		lines!(sol2[:, :timestamp], sol2[:, "Si_dep(t)"], label="Si_dep")
+		lines!(sol2[:, :timestamp], sol2[:, "Si_etch(t)"], label="Si_etch")
+		lines!(sol2[:, :timestamp], sol2[:, "SiCl₂(t)"], label="SiCl₂")
+
+	axislegend(ax2, position =:lt)
 
 	fig2
 end
@@ -1967,17 +1994,21 @@ version = "3.5.0+0"
 
 # ╔═╡ Cell order:
 # ╠═7e17fa70-86c6-11ec-1a61-41e7e9a383ec
-# ╠═c077c655-419b-49f9-8d92-af80dc18c3a9
-# ╠═fa5cb956-5d01-4784-86d1-d98d832d9a84
 # ╠═96df1a34-a1c0-4785-b5de-bb22426d8888
+# ╠═e4cec0ae-04d4-4360-998d-5f367063662c
 # ╠═9950524f-18c5-4c13-9ec3-ab3865622179
+# ╠═fa30faba-fde2-4fd1-8040-0fb3050b6537
+# ╠═0a274653-5129-4bb3-96a1-742276fd098b
 # ╠═41d8425a-0c29-48b2-97fc-d1c4fc49df67
 # ╠═214b86c5-2aa9-42e3-855f-416e94a76550
+# ╠═9e99c1a5-8eb4-41a0-af8e-56142434967b
 # ╠═c986672c-e787-41fc-9a25-63f498f24d4b
 # ╠═1b12f164-be6e-444c-bba8-c27b1cccb730
 # ╠═21426370-833c-4377-a88e-55ef22179792
 # ╠═6bc912ba-7bea-4512-96bf-1f14d3e87db9
 # ╠═57abbd90-8670-4117-ae4c-dce562abe162
+# ╠═05db1f52-1c87-465f-8b1b-25e45aed6d0b
+# ╠═d5bad535-7150-40a9-b319-0c86617264e1
 # ╠═db312b27-f0f5-47de-a074-1a2a8db3d62b
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
