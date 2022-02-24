@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.18.0
+# v0.17.5
 
 using Markdown
 using InteractiveUtils
@@ -15,7 +15,12 @@ macro bind(def, element)
 end
 
 # ╔═╡ 7e17fa70-86c6-11ec-1a61-41e7e9a383ec
-using CairoMakie, Catalyst, DataFrames, DifferentialEquations, PlutoUI
+begin
+	# simulation/solver packages
+	using Catalyst, DifferentialEquations
+	# notebook utilities
+	using CairoMakie, DataFrames, PlutoUI
+end
 
 # ╔═╡ 2ec89215-0634-498c-94ee-389b9b8d7034
 md"""
@@ -30,22 +35,22 @@ md"""
 
 # ╔═╡ e4cec0ae-04d4-4360-998d-5f367063662c
 begin
-	#define the literature-sourced constants
-	K0  = 2950.94   # cm/s
-	K10 = 1.899e-16 # cm³
-	K20 = 39.3886 	# cm/s
-	K30 = 952.058 	# cm/s
+    const K0  = 2950.94   # cm/s
+    const K10 = 1.899e-16 # cm³
+    const K20 = 39.3886   # cm/s
+    const K30 = 952.058   # cm/s
 
-	E   = 18.910 # kcal/mol
-	Ea1 = 10.620 # kcal/mol
-	Ea2 = 17.490 # kcal/mol
-	Ea3 = 21.721 # kcal/mol
-	R = 1.985e-3 # kcal/mol-K
+    const E   = 18.910 # kcal/mol
+    const Ea1 = 10.620 # kcal/mol
+    const Ea2 = 17.490 # kcal/mol
+    const Ea3 = 21.721 # kcal/mol
+	
+    const R = 1.985e-3 # kcal/mol-K
 
-	k = 0 # random parameter for using Kp
+    const k = 1e-3 # random parameter for using Kp
 
-	ρ_Si  = 2.33 # g/cm³
-	MW_Si = 28.086 # g/mol
+    const ρ_Si  = 2.33 # g/cm³
+    const MW_Si = 28.086 # g/mol
 end;
 
 # ╔═╡ abb094af-f9c7-42a5-bdc7-d033ac9a5d72
@@ -55,21 +60,21 @@ md"""
 
 # ╔═╡ bdee4229-9e84-4bdd-a836-985a2f4b96b0
 begin
-	# define the equilibrium constant expressions
-	K(T::Float64)   = K0  * exp(-E   / (R * T))
-	K1(T::Float64)  = K10 * exp(-Ea1 / (R * T)) # [cm³]
-	K2(T::Float64)  = K20 * exp(-Ea2 / (R * T))
-	K3(T::Float64)  = K30 * exp(-Ea3 / (R * T)) # units = 
-	kKp(T::Float64) = k * 10^(10.38 - 16770 / T) 
+    # define the equilibrium constant expressions
+    K(T)   = K0  * exp(-E   / (R * T))
+    K1(T)  = K10 * exp(-Ea1 / (R * T)) # [cm³]
+    K2(T)  = K20 * exp(-Ea2 / (R * T))
+    K3(T)  = K30 * exp(-Ea3 / (R * T)) # units = 
+    kKp(T) = k * exp(10.38 - 16770 / T) 
 end;
 
 # ╔═╡ c986672c-e787-41fc-9a25-63f498f24d4b
 begin
-	# register the equilibrium expressions
-	@register kKp(T)
-	@register K(T)
-	@register K2(T) 
-	@register K3(T)
+    # register the equilibrium expressions
+    @register kKp(T)
+    @register K(T)
+    @register K2(T) 
+    @register K3(T)
 end
 
 # ╔═╡ d7f3703a-dee2-46ce-a052-92d44938c965
@@ -79,17 +84,10 @@ md"""
 
 # ╔═╡ 1b12f164-be6e-444c-bba8-c27b1cccb730
 deposition = @reaction_network begin
-
-	# K(T), SiCl₄ + 2H₂ --> Si + 4HCl # deposition of Si on the surface, produces 											Si(dep)
-	K(T), SiCl₄ + 2H₂ --> Si_dep + 4HCl
-	
-	# K2(T), Si + 2HCl --> SiCl₂ + H₂ # competitive etching of Si by HCl
-	K2(T), 2HCl --> SiCl₂ + H₂ + Si_etch
-	
-	# K3(T), SiCl₄ + Si --> 2SiCl₂ # competitive etching of Si by SiCl₄
-	kKp(T), SiCl₄ --> 2SiCl₂ + Si_etch
-
-	k, 2SiCl₂ --> SiCl₄ + Si_dep 
+    K(T), SiCl₄ + 2H₂ --> Si_dep + 4HCl
+    K2(T), 2HCl --> SiCl₂ + H₂ + Si_etch
+    kKp(T), SiCl₄ --> 2SiCl₂ + Si_etch
+    k, 2SiCl₂ --> SiCl₄ + Si_dep 
 end 
 
 # ╔═╡ b7222499-de8e-452f-ab52-e1a443109147
@@ -107,103 +105,112 @@ Wafer Diameter: $(@bind wafer_diameter PlutoUI.NumberField(10:45, default=30)) c
 
 Temperature: $(@bind temperature PlutoUI.NumberField(950:1250, default=1000)) K
 
-Initial SiCl₄ Pressure: $(@bind p_SiCl₄⁰ PlutoUI.NumberField(1:1:760, default=1)) mmHg
+Initial SiCl₄ Pressure: $(@bind p_SiCl₄⁰ PlutoUI.NumberField(1:1:760, default=760)) mmHg
 
-Initial H₂ Pressure: $(@bind p_H₂⁰ PlutoUI.NumberField(1:1:760, default=1)) mmHg
+Initial H₂ Pressure: $(@bind p_H₂⁰ PlutoUI.NumberField(1:1:760, default=760)) mmHg
 """
-
-# ╔═╡ 57abbd90-8670-4117-ae4c-dce562abe162
-begin
-	odesys2 = convert(ODESystem, deposition, combinatoric_ratelaws=false)
-	# combinatoric_ratelaws = false makes it so that the rate laws are elementary with regard to stoichiometry, and coefficients aren't based on factorials
-
-	# initial values
-	u₀map2 = [
-		:SiCl₄   => p_SiCl₄⁰ / 760 / reactor_volume, 
-		:H₂      => p_H₂⁰ / 760 / reactor_volume, 
-		:Si_dep  => 0.0,
-		:Si_etch => 0.0,
-		:HCl 	 => 0.0, 
-		:SiCl₂   => 0.0,
-		:k 		 => k,
-		:T 		 => temperature
-	]
-
-	# time interval of simulation
-	timespan2 = (0.0, 7200.0)
-
-	# define the ODEs and solve
-	prob2 = ODEProblem(deposition, u₀map2, timespan2)
-	sol2 = DataFrame(solve(prob2, Tsit5(), saveat=0.05, maxiters=1e8))
-end
-
-# ╔═╡ 05db1f52-1c87-465f-8b1b-25e45aed6d0b
-# view the system of equations
-odesys2
-
-# ╔═╡ d5bad535-7150-40a9-b319-0c86617264e1
-begin
-	# test the mole balance w/ the deposition/etching tracking scheme
-	a = sol2[1, "SiCl₄(t)"]
-	b = sol2[end, "SiCl₄(t)"] + sol2[end, "SiCl₂(t)"] + sol2[end, "Si_dep(t)"] - sol2[end, "Si_etch(t)"]
-
-	# Si_net must be within acceptable margin of difference between initial and final gaseous species amounts
-	@assert isapprox(a, b)
-end;
 
 # ╔═╡ a2469790-8df5-4c89-b683-6b140004a928
 function film_thickness(Si_dep, Si_etch; 
-		V=reactor_volume, d=wafer_diameter, ρ=ρ_Si, MW=MW_Si)
-	Si_net   = Si_dep - Si_etch # net pseudo-concentration of deposited Si
-	net_mol  = Si_net * V # net moles deposited Si
-	dep_mass = net_mol * MW # net mass deposited Si (g)
-	dep_vol  = dep_mass / ρ # net volume deposited Si (cm³)
-	δ 		 = dep_vol / (π * d^2 / 4) * 1e4 # film thickness (μm)
-	return δ
+        V=reactor_volume, d=wafer_diameter, ρ=ρ_Si, MW=MW_Si)
+    Si_net   = Si_dep - Si_etch # net pseudo-concentration of deposited Si
+    net_mol  = Si_net * V # net moles deposited Si
+    dep_mass = net_mol * MW # net mass deposited Si (g)
+    dep_vol  = dep_mass / ρ # net volume deposited Si (cm³)
+    δ        = dep_vol / (π * d^2 / 4) * 1e4 # film thickness (μm)
+    return δ
 end;
 
-# ╔═╡ abdcb165-78ee-4b84-9735-72c085bfd76e
-δ = film_thickness.(sol2[:, "Si_dep(t)"], sol2[:, "Si_etch(t)"])
+# ╔═╡ 57abbd90-8670-4117-ae4c-dce562abe162
+begin
+    odesys = convert(ODESystem, deposition, combinatoric_ratelaws=false)
+    # combinatoric_ratelaws = false makes it so that the rate laws are elementary with regard to stoichiometry, and coefficients aren't based on factorials
+
+    # initial values
+    u₀ = [
+        :SiCl₄   => p_SiCl₄⁰ / 760 / reactor_volume, ## BUG this calc wrong!
+        :H₂      => p_H₂⁰ / 760 / reactor_volume, ## TODO fix it!
+        :Si_dep  => 0.0,
+        :Si_etch => 0.0,
+        :HCl     => 0.0, 
+        :SiCl₂   => 0.0,
+        :k       => k,
+        :T       => temperature
+    ]
+
+    # time interval of simulation
+    timespan = (0.0, 7200.0)
+
+    # define the ODEs and solve
+    prob = ODEProblem(deposition, u₀, timespan)
+    sol = DataFrame(solve(prob, Tsit5(), saveat=0.05, maxiters=1e8))
+	δ = film_thickness.(sol[:, "Si_dep(t)"], sol[:, "Si_etch(t)"])
+end;
+
+# ╔═╡ 05db1f52-1c87-465f-8b1b-25e45aed6d0b
+# view the system of equations
+odesys
+
+# ╔═╡ d5bad535-7150-40a9-b319-0c86617264e1
+begin
+    # test the mole balance w/ the deposition/etching tracking scheme
+    a = sol[1, "SiCl₄(t)"]
+    b = sol[end, "SiCl₄(t)"] + sol[end, "SiCl₂(t)"] + 
+		sol[end, "Si_dep(t)"] - sol[end, "Si_etch(t)"]
+
+    # Si_net must be within small margin of diff. btwn. initial and final Si amts.
+    @assert isapprox(a, b)
+end;
 
 # ╔═╡ 35d612fb-b859-42b1-9ea2-ae90ad01dfb8
 md"""
 ## Result
 """
 
-# ╔═╡ db312b27-f0f5-47de-a074-1a2a8db3d62b
+# ╔═╡ abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
 begin
-	fig2 = Figure()
-	ax2 = Axis(
-		fig2[1,1],
-		title = "Gas Phase",
-		ylabel="Species Concentration",
-		xlabel="Time [s]"
-	)
+	max_idx = argmax(δ)
 	
-	lines!(sol2[:, :timestamp], sol2[:, "SiCl₄(t)"], label="SiCl₄")
-	lines!(sol2[:, :timestamp], sol2[:, "H₂(t)"], label="H₂")
-	lines!(sol2[:, :timestamp], sol2[:, "HCl(t)"], label="HCl")
-	lines!(sol2[:, :timestamp], sol2[:, "SiCl₂(t)"], label="SiCl₂")
+md"""
+**Maximum Film Thickness**: $(round(δ[max_idx], digits=2)) μm
 
-	axislegend(ax2, position =:lt)
-
-	ax3 = Axis(
-		fig2[2,1],
-		title="Film Growth",
-		xlabel="Time [s]",
-		ylabel="δ [μm]"
-	)
-	lines!(sol2[:, :timestamp], δ)
-
-	fig2
+**Time to Maximum Thickness**: $(sol[max_idx, :timestamp]) s
+"""
 end
 
-# ╔═╡ abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
-md"""
-**Maximum Film Thickness**: $(round(maximum(δ), digits=2)) μm
+# ╔═╡ fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
+begin
+	fig = Figure()
+    
+	Axis(
+		fig[1,1],
+        title = "Gas-Phase Species",
+        ylabel="Concentration [mol/L]",
+        xlabel="Time [sec]"
+	)
 
-**Time to Maximum Thickness**: $(sol2[argmax(δ), :timestamp]) s
-"""
+	plotted_species = setdiff(
+		String.(Symbol.(species(deposition))),
+		["T(t)", "k(t)", "Si_dep(t)", "Si_etch(t)"]
+	)
+	
+    for name in plotted_species
+        lines!(sol[:, :timestamp], sol[:, name], label=chop(name, tail=3))
+    end
+
+	axislegend()
+
+    Axis(
+        fig[2,1],
+        title="Film Growth",
+        xlabel="Time [s]",
+        ylabel="δ [μm]"
+    )
+	
+    lines!(sol[:, :timestamp], δ)
+
+    fig
+end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -215,8 +222,8 @@ DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 
 [compat]
-CairoMakie = "~0.7.3"
-Catalyst = "~10.5.0"
+CairoMakie = "~0.7.4"
+Catalyst = "~10.6.0"
 DataFrames = "~1.3.2"
 DifferentialEquations = "~7.1.0"
 PlutoUI = "~0.7.35"
@@ -226,7 +233,7 @@ PlutoUI = "~0.7.35"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.7.1"
+julia_version = "1.7.0"
 manifest_format = "2.0"
 
 [[deps.AbstractAlgebra]]
@@ -286,9 +293,9 @@ version = "3.2.2"
 
 [[deps.ArrayLayouts]]
 deps = ["FillArrays", "LinearAlgebra", "SparseArrays"]
-git-tree-sha1 = "e1ba79094cae97b688fb42d31cbbfd63a69706e4"
+git-tree-sha1 = "56c347caf09ad8acb3e261fe75f8e09652b7b05b"
 uuid = "4c555306-a7a7-4459-81d9-ec55ddd5c99a"
-version = "0.7.8"
+version = "0.7.10"
 
 [[deps.Artifacts]]
 uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
@@ -378,9 +385,9 @@ version = "1.0.5"
 
 [[deps.CairoMakie]]
 deps = ["Base64", "Cairo", "Colors", "FFTW", "FileIO", "FreeType", "GeometryBasics", "LinearAlgebra", "Makie", "SHA", "StaticArrays"]
-git-tree-sha1 = "b1d884ee7dae11985314192270eb5762b9ed09ae"
+git-tree-sha1 = "aedc7c910713eb616391cf95218277b714a7913f"
 uuid = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
-version = "0.7.3"
+version = "0.7.4"
 
 [[deps.Cairo_jll]]
 deps = ["Artifacts", "Bzip2_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "JLLWrappers", "LZO_jll", "Libdl", "Pixman_jll", "Pkg", "Xorg_libXext_jll", "Xorg_libXrender_jll", "Zlib_jll", "libpng_jll"]
@@ -388,17 +395,23 @@ git-tree-sha1 = "4b859a208b2397a7a623a03449e4636bdb17bcf2"
 uuid = "83423d85-b0ee-5818-9007-b63ccbeb887a"
 version = "1.16.1+1"
 
+[[deps.Calculus]]
+deps = ["LinearAlgebra"]
+git-tree-sha1 = "f641eb0a4f00c343bbc32346e1217b86f3ce9dad"
+uuid = "49dc2e85-a5d0-5ad3-a950-438e2897f1b9"
+version = "0.5.1"
+
 [[deps.Catalyst]]
 deps = ["AbstractAlgebra", "DataStructures", "DiffEqBase", "DiffEqJump", "DocStringExtensions", "Graphs", "Latexify", "MacroTools", "ModelingToolkit", "Parameters", "Reexport", "Requires", "SparseArrays", "Symbolics"]
-git-tree-sha1 = "5046c6ba75bb35d4818555cfa8e437550edd6271"
+git-tree-sha1 = "959a024fd10a379b6dfa9fe6d2d6bff7dc2d3309"
 uuid = "479239e8-5488-4da2-87a7-35f2df7eef83"
-version = "10.5.1"
+version = "10.6.0"
 
 [[deps.ChainRulesCore]]
 deps = ["Compat", "LinearAlgebra", "SparseArrays"]
-git-tree-sha1 = "f9982ef575e19b0e5c7a98c6e75ee496c0f73a93"
+git-tree-sha1 = "c9a6160317d1abe9c44b3beb367fd448117679ca"
 uuid = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
-version = "1.12.0"
+version = "1.13.0"
 
 [[deps.ChangesOfVariables]]
 deps = ["ChainRulesCore", "LinearAlgebra", "Test"]
@@ -568,9 +581,9 @@ version = "2.20.1"
 
 [[deps.DiffEqJump]]
 deps = ["ArrayInterface", "Compat", "DataStructures", "DiffEqBase", "FunctionWrappers", "Graphs", "LinearAlgebra", "PoissonRandom", "Random", "RandomNumbers", "RecursiveArrayTools", "Reexport", "StaticArrays", "TreeViews", "UnPack"]
-git-tree-sha1 = "628ddc7e2b44e214232e747b22f1a1d9a8f14467"
+git-tree-sha1 = "e30f058eb600407e3fd4ea082e2527e3a3671238"
 uuid = "c894b116-72e5-5b58-be3c-e6d8d4ac2b12"
-version = "8.1.0"
+version = "8.2.1"
 
 [[deps.DiffEqNoiseProcess]]
 deps = ["DiffEqBase", "Distributions", "LinearAlgebra", "Optim", "PoissonRandom", "QuadGK", "Random", "Random123", "RandomNumbers", "RecipesBase", "RecursiveArrayTools", "Requires", "ResettableStacks", "SciMLBase", "StaticArrays", "Statistics"]
@@ -608,9 +621,9 @@ uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
 [[deps.Distributions]]
 deps = ["ChainRulesCore", "DensityInterface", "FillArrays", "LinearAlgebra", "PDMats", "Printf", "QuadGK", "Random", "SparseArrays", "SpecialFunctions", "Statistics", "StatsBase", "StatsFuns", "Test"]
-git-tree-sha1 = "38012bf3553d01255e83928eec9c998e19adfddf"
+git-tree-sha1 = "9d3c0c762d4666db9187f363a76b47f7346e673b"
 uuid = "31c24e10-a181-5473-b8eb-7969acd0382f"
-version = "0.25.48"
+version = "0.25.49"
 
 [[deps.DocStringExtensions]]
 deps = ["LibGit2"]
@@ -627,6 +640,12 @@ version = "0.5.9"
 [[deps.Downloads]]
 deps = ["ArgTools", "LibCURL", "NetworkOptions"]
 uuid = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
+
+[[deps.DualNumbers]]
+deps = ["Calculus", "NaNMath", "SpecialFunctions"]
+git-tree-sha1 = "84f04fe68a3176a583b864e492578b9466d87f1e"
+uuid = "fa6b7ba4-c1ee-5f82-b5fc-ecf0adba8f74"
+version = "0.6.6"
 
 [[deps.DynamicPolynomials]]
 deps = ["DataStructures", "Future", "LinearAlgebra", "MultivariatePolynomials", "MutableArithmetics", "Pkg", "Reexport", "Test"]
@@ -850,6 +869,12 @@ git-tree-sha1 = "d8bccde6fc8300703673ef9e1383b11403ac1313"
 uuid = "e33a78d0-f292-5ffc-b300-72abe9b543c8"
 version = "2.7.0+0"
 
+[[deps.HypergeometricFunctions]]
+deps = ["DualNumbers", "LinearAlgebra", "SpecialFunctions", "Test"]
+git-tree-sha1 = "65e4589030ef3c44d3b90bdc5aac462b4bb05567"
+uuid = "34004b35-14d8-5ef3-9330-4cdb6864b03a"
+version = "0.3.8"
+
 [[deps.Hyperscript]]
 deps = ["Test"]
 git-tree-sha1 = "8d511d5b81240fc8e6802386302675bdf47737b9"
@@ -1044,9 +1069,9 @@ version = "1.7.1"
 
 [[deps.Latexify]]
 deps = ["Formatting", "InteractiveUtils", "LaTeXStrings", "MacroTools", "Markdown", "Printf", "Requires"]
-git-tree-sha1 = "a8f4f279b6fa3c3c4f1adadd78a621b13a506bce"
+git-tree-sha1 = "a6552bfeab40de157a297d84e03ade4b8177677f"
 uuid = "23fbe1c1-3f47-55db-b15f-69d7ec21a316"
-version = "0.15.9"
+version = "0.15.12"
 
 [[deps.LayoutPointers]]
 deps = ["ArrayInterface", "LinearAlgebra", "ManualMemory", "SIMDTypes", "Static"]
@@ -1140,9 +1165,9 @@ uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
 [[deps.LoopVectorization]]
 deps = ["ArrayInterface", "CPUSummary", "ChainRulesCore", "CloseOpenIntervals", "DocStringExtensions", "ForwardDiff", "HostCPUFeatures", "IfElse", "LayoutPointers", "LinearAlgebra", "OffsetArrays", "PolyesterWeave", "SIMDDualNumbers", "SLEEFPirates", "SpecialFunctions", "Static", "ThreadingUtilities", "UnPack", "VectorizationBase"]
-git-tree-sha1 = "67c0dfeae307972b50009ce220aae5684ea852d1"
+git-tree-sha1 = "534aa24fae56f5f0956134d8789ab30d6fe2f615"
 uuid = "bdcacae8-1622-11e9-2a5c-532679323890"
-version = "0.12.101"
+version = "0.12.102"
 
 [[deps.MKL_jll]]
 deps = ["Artifacts", "IntelOpenMP_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "Pkg"]
@@ -1158,9 +1183,9 @@ version = "0.5.9"
 
 [[deps.Makie]]
 deps = ["Animations", "Base64", "ColorBrewer", "ColorSchemes", "ColorTypes", "Colors", "Contour", "Distributions", "DocStringExtensions", "FFMPEG", "FileIO", "FixedPointNumbers", "Formatting", "FreeType", "FreeTypeAbstraction", "GeometryBasics", "GridLayoutBase", "ImageIO", "IntervalSets", "Isoband", "KernelDensity", "LaTeXStrings", "LinearAlgebra", "MakieCore", "Markdown", "Match", "MathTeXEngine", "Observables", "OffsetArrays", "Packing", "PlotUtils", "PolygonOps", "Printf", "Random", "RelocatableFolders", "Serialization", "Showoff", "SignedDistanceFields", "SparseArrays", "StaticArrays", "Statistics", "StatsBase", "StatsFuns", "StructArrays", "UnicodeFun"]
-git-tree-sha1 = "475b854bff7867c37687d65f7b9498401ac6536d"
+git-tree-sha1 = "cd0fd02ab0d129f03515b7b68ca77fb670ef2e61"
 uuid = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
-version = "0.16.4"
+version = "0.16.5"
 
 [[deps.MakieCore]]
 deps = ["Observables"]
@@ -1220,9 +1245,9 @@ uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[deps.ModelingToolkit]]
 deps = ["AbstractTrees", "ArrayInterface", "ConstructionBase", "DataStructures", "DiffEqBase", "DiffEqCallbacks", "DiffEqJump", "DiffRules", "Distributed", "Distributions", "DocStringExtensions", "DomainSets", "Graphs", "IfElse", "InteractiveUtils", "JuliaFormatter", "LabelledArrays", "Latexify", "Libdl", "LinearAlgebra", "MacroTools", "NaNMath", "NonlinearSolve", "RecursiveArrayTools", "Reexport", "Requires", "RuntimeGeneratedFunctions", "SafeTestsets", "SciMLBase", "Serialization", "Setfield", "SparseArrays", "SpecialFunctions", "StaticArrays", "SymbolicUtils", "Symbolics", "UnPack", "Unitful"]
-git-tree-sha1 = "44388e28a039b4424ada5fba7463b31a1ee75d7b"
+git-tree-sha1 = "6d3dd18fbb1abf01894c5d064072285c6b863a98"
 uuid = "961ee093-0014-501f-94e3-6117800e7a78"
-version = "8.4.1"
+version = "8.5.1"
 
 [[deps.MosaicViews]]
 deps = ["MappedArrays", "OffsetArrays", "PaddedViews", "StackViews"]
@@ -1438,15 +1463,15 @@ version = "0.4.0"
 
 [[deps.Polyester]]
 deps = ["ArrayInterface", "BitTwiddlingConvenienceFunctions", "CPUSummary", "IfElse", "ManualMemory", "PolyesterWeave", "Requires", "Static", "StrideArraysCore", "ThreadingUtilities"]
-git-tree-sha1 = "de33c49a06d7eb1eef40b83fe873c1c2cba25623"
+git-tree-sha1 = "2232d3865bc9a098e664f69cbe340b960d48217f"
 uuid = "f517fe37-dbe3-4b94-8317-1923a5111588"
-version = "0.6.4"
+version = "0.6.6"
 
 [[deps.PolyesterWeave]]
 deps = ["BitTwiddlingConvenienceFunctions", "CPUSummary", "IfElse", "Static", "ThreadingUtilities"]
-git-tree-sha1 = "0bc9e1a21ba066335a5207ac031ee41f72615181"
+git-tree-sha1 = "dc11fa882240c43a875b48e21e6423704927d12f"
 uuid = "1d0040c9-8b98-4ee7-8388-3f51789ca0ad"
-version = "0.1.3"
+version = "0.1.4"
 
 [[deps.PolygonOps]]
 git-tree-sha1 = "77b3d3605fc1cd0b42d95eba87dfcd2bf67d5ff6"
@@ -1622,9 +1647,9 @@ version = "0.1.0"
 
 [[deps.SLEEFPirates]]
 deps = ["IfElse", "Static", "VectorizationBase"]
-git-tree-sha1 = "3a5ae1db486e4ce3ccd2b392389943481e20401f"
+git-tree-sha1 = "61a96d8b89083a53fb2b745f3b59a05359651bbe"
 uuid = "476501e8-09a2-5ece-8869-fb82de89a1fa"
-version = "0.6.29"
+version = "0.6.30"
 
 [[deps.SafeTestsets]]
 deps = ["Test"]
@@ -1640,9 +1665,9 @@ version = "0.3.0"
 
 [[deps.SciMLBase]]
 deps = ["ArrayInterface", "CommonSolve", "ConstructionBase", "Distributed", "DocStringExtensions", "IteratorInterfaceExtensions", "LinearAlgebra", "Logging", "RecipesBase", "RecursiveArrayTools", "StaticArrays", "Statistics", "Tables", "TreeViews"]
-git-tree-sha1 = "f4862c0cb4e34ed182718221028ba1bf50742108"
+git-tree-sha1 = "8ff1bf96965b3878ca5d235752ff1daf519e7a26"
 uuid = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
-version = "1.26.1"
+version = "1.26.3"
 
 [[deps.Scratch]]
 deps = ["Dates"]
@@ -1655,9 +1680,9 @@ uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
 [[deps.Setfield]]
 deps = ["ConstructionBase", "Future", "MacroTools", "Requires"]
-git-tree-sha1 = "0afd9e6c623e379f593da01f20590bacc26d1d14"
+git-tree-sha1 = "38d88503f695eb0301479bc9b0d4320b378bafe5"
 uuid = "efcf1570-3423-57d1-acb7-fd33fddbac46"
-version = "0.8.1"
+version = "0.8.2"
 
 [[deps.SharedArrays]]
 deps = ["Distributed", "Mmap", "Random", "Serialization"]
@@ -1708,9 +1733,9 @@ version = "1.20.2"
 
 [[deps.SpecialFunctions]]
 deps = ["ChainRulesCore", "IrrationalConstants", "LogExpFunctions", "OpenLibm_jll", "OpenSpecFun_jll"]
-git-tree-sha1 = "8d0c8e3d0ff211d9ff4a0c2307d876c99d10bdf1"
+git-tree-sha1 = "85e5b185ed647b8ee89aa25a7788a2b43aa8a74f"
 uuid = "276daf66-3868-5448-9aa4-cd146d93841b"
-version = "2.1.2"
+version = "2.1.3"
 
 [[deps.SplittablesBase]]
 deps = ["Setfield", "Test"]
@@ -1732,9 +1757,9 @@ version = "0.4.1"
 
 [[deps.StaticArrays]]
 deps = ["LinearAlgebra", "Random", "Statistics"]
-git-tree-sha1 = "95c6a5d0e8c69555842fc4a927fc485040ccc31c"
+git-tree-sha1 = "6354dfaf95d398a1a70e0b28238321d5d17b2530"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "1.3.5"
+version = "1.4.0"
 
 [[deps.Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
@@ -1753,10 +1778,10 @@ uuid = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 version = "0.33.16"
 
 [[deps.StatsFuns]]
-deps = ["ChainRulesCore", "InverseFunctions", "IrrationalConstants", "LogExpFunctions", "Reexport", "Rmath", "SpecialFunctions"]
-git-tree-sha1 = "f35e1879a71cca95f4826a14cdbf0b9e253ed918"
+deps = ["ChainRulesCore", "HypergeometricFunctions", "InverseFunctions", "IrrationalConstants", "LogExpFunctions", "Reexport", "Rmath", "SpecialFunctions"]
+git-tree-sha1 = "25405d7016a47cf2bd6cd91e66f4de437fd54a07"
 uuid = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
-version = "0.9.15"
+version = "0.9.16"
 
 [[deps.SteadyStateDiffEq]]
 deps = ["DiffEqBase", "DiffEqCallbacks", "LinearAlgebra", "NLsolve", "Reexport", "SciMLBase"]
@@ -1772,15 +1797,15 @@ version = "6.44.0"
 
 [[deps.StrideArraysCore]]
 deps = ["ArrayInterface", "CloseOpenIntervals", "IfElse", "LayoutPointers", "ManualMemory", "Requires", "SIMDTypes", "Static", "ThreadingUtilities"]
-git-tree-sha1 = "fdbb530d433413e5ec8e274d2971786731ef82e9"
+git-tree-sha1 = "e0a02838565c4600ecd1d8874db8cfe263aaa6c7"
 uuid = "7792a7ef-975c-4747-a70f-980b88e8d1da"
-version = "0.2.10"
+version = "0.2.12"
 
 [[deps.StructArrays]]
 deps = ["Adapt", "DataAPI", "StaticArrays", "Tables"]
-git-tree-sha1 = "d21f2c564b21a202f4677c0fba5b5ee431058544"
+git-tree-sha1 = "57617b34fa34f91d536eb265df67c2d4519b8b98"
 uuid = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
-version = "0.6.4"
+version = "0.6.5"
 
 [[deps.SuiteSparse]]
 deps = ["Libdl", "LinearAlgebra", "Serialization", "SparseArrays"]
@@ -1851,9 +1876,9 @@ uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [[deps.ThreadingUtilities]]
 deps = ["ManualMemory"]
-git-tree-sha1 = "884539ba8c4584a3a8173cb4ee7b61049955b79c"
+git-tree-sha1 = "f8629df51cab659d70d2e5618a430b4d3f37f2c3"
 uuid = "8290d209-cae3-49c0-8002-c8c24d57dab5"
-version = "0.4.7"
+version = "0.5.0"
 
 [[deps.ThreadsX]]
 deps = ["ArgCheck", "BangBang", "ConstructionBase", "InitialValues", "MicroCollections", "Referenceables", "Setfield", "SplittablesBase", "Transducers"]
@@ -2090,15 +2115,14 @@ version = "3.5.0+0"
 # ╠═c986672c-e787-41fc-9a25-63f498f24d4b
 # ╟─d7f3703a-dee2-46ce-a052-92d44938c965
 # ╠═1b12f164-be6e-444c-bba8-c27b1cccb730
-# ╟─b7222499-de8e-452f-ab52-e1a443109147
-# ╠═57abbd90-8670-4117-ae4c-dce562abe162
 # ╠═05db1f52-1c87-465f-8b1b-25e45aed6d0b
-# ╠═d5bad535-7150-40a9-b319-0c86617264e1
+# ╟─b7222499-de8e-452f-ab52-e1a443109147
 # ╠═a2469790-8df5-4c89-b683-6b140004a928
-# ╠═abdcb165-78ee-4b84-9735-72c085bfd76e
-# ╟─b9e889d9-5edb-498e-b560-fd699fe2de73
+# ╠═57abbd90-8670-4117-ae4c-dce562abe162
+# ╠═d5bad535-7150-40a9-b319-0c86617264e1
+# ╠═b9e889d9-5edb-498e-b560-fd699fe2de73
 # ╟─35d612fb-b859-42b1-9ea2-ae90ad01dfb8
-# ╠═db312b27-f0f5-47de-a074-1a2a8db3d62b
 # ╠═abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
+# ╠═fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
