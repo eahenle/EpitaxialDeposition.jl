@@ -4,71 +4,78 @@
 using Markdown
 using InteractiveUtils
 
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
+macro bind(def, element)
+    quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local el = $(esc(element))
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
+        el
+    end
+end
+
 # ╔═╡ 7e17fa70-86c6-11ec-1a61-41e7e9a383ec
-using Catalyst, DifferentialEquations, CairoMakie, DataFrames
+using CairoMakie, Catalyst, DataFrames, DifferentialEquations, PlutoUI
 
-# ╔═╡ 96df1a34-a1c0-4785-b5de-bb22426d8888
-silicon_process = @reaction_network SiliconGrowth begin
+# ╔═╡ 2ec89215-0634-498c-94ee-389b9b8d7034
+md"""
+# Epitaxial Silicon Film Growth
+### Ian Harreschou, Adrian Henle
+"""
 
-	(kf1, kb1), SiCl₄ + H₂ <--> SiCl₂ + 2HCl #rxn 1
-
-	(kf2, kb2), SiCl₄ + H₂ <--> SiCl₃H + HCl #rxn 2
-
-	(kf3, kb3), SiCl₃H + H₂ <--> SiCl₂H₂ + HCl #rxn 3
-
-	(kf4, kb4), SiCl₂H₂ + H₂ <--> SiClH₃ + HCl #rxn 4
-
-	(kf5, kb5), SiClH₃ + H₂ <--> SiH₄ + HCl #rxn 5
-
-	(kf6, kb6), SiCl₄ + 2H₂ <--> Si + 4HCl #rxn 6
-	
-end kf1 kf2 kf3 kf4 kf5 kf6 kb1 kb2 kb3 kb4 kb5 kb6
+# ╔═╡ 036cb0e3-e198-49f7-8221-3593fbeebb95
+md"""
+## Constants
+"""
 
 # ╔═╡ e4cec0ae-04d4-4360-998d-5f367063662c
 begin
-	#define the computationally derived constants
+	#define the literature-sourced constants
+	K0  = 2950.94   # cm/s
+	K10 = 1.899e-16 # cm³
+	K20 = 39.3886 	# cm/s
+	K30 = 952.058 	# cm/s
 
-	K0 = 2950.94 #cm/s
-	K10 = 1.899e-16 #cm³
-	K20 = 39.3886 # cm/s
-	K30 = 952.058 #cm/s
-
-	E = 18.910 #kcal/mol
-	Ea1 = 10.620 #kcal/mol
-	Ea2 = 17.490 #kcal/mol
-	Ea3 = 21.721 #kcal/mol
+	E   = 18.910 # kcal/mol
+	Ea1 = 10.620 # kcal/mol
+	Ea2 = 17.490 # kcal/mol
+	Ea3 = 21.721 # kcal/mol
 	R = 1.985e-3 # kcal/mol-K
 
-	k = 1 # random parameter for using Kp
-	
-end
+	k = 0 # random parameter for using Kp
 
-# ╔═╡ 9950524f-18c5-4c13-9ec3-ab3865622179
-parameters(silicon_process)
+	ρ_Si  = 2.33 # g/cm³
+	MW_Si = 28.086 # g/mol
+end;
 
-# ╔═╡ fa30faba-fde2-4fd1-8040-0fb3050b6537
-K(T::Float64) = K0 * exp(-E / (R*T))
+# ╔═╡ abb094af-f9c7-42a5-bdc7-d033ac9a5d72
+md"""
+## Equilibrium Expressions
+"""
 
-# ╔═╡ 0a274653-5129-4bb3-96a1-742276fd098b
-K1(T::Float64) = K10*exp(-Ea1 / (R*T)) # [cm³]
-
-# ╔═╡ 41d8425a-0c29-48b2-97fc-d1c4fc49df67
-K2(T) = K20*exp(-Ea2 / (R*T))
-
-# ╔═╡ 214b86c5-2aa9-42e3-855f-416e94a76550
-K3(T) = K30*exp(-Ea3 / (R*T)) # units = 
-
-# ╔═╡ 9e99c1a5-8eb4-41a0-af8e-56142434967b
-kKp(T) = k*10^(10.38 - 16770/T) 
+# ╔═╡ bdee4229-9e84-4bdd-a836-985a2f4b96b0
+begin
+	# define the equilibrium constant expressions
+	K(T::Float64)   = K0  * exp(-E   / (R * T))
+	K1(T::Float64)  = K10 * exp(-Ea1 / (R * T)) # [cm³]
+	K2(T::Float64)  = K20 * exp(-Ea2 / (R * T))
+	K3(T::Float64)  = K30 * exp(-Ea3 / (R * T)) # units = 
+	kKp(T::Float64) = k * 10^(10.38 - 16770 / T) 
+end;
 
 # ╔═╡ c986672c-e787-41fc-9a25-63f498f24d4b
 begin
-	# @register k
-	@register Kp(T)
+	# register the equilibrium expressions
+	@register kKp(T)
 	@register K(T)
 	@register K2(T) 
 	@register K3(T)
 end
+
+# ╔═╡ d7f3703a-dee2-46ce-a052-92d44938c965
+md"""
+## Chemical Reaction Network
+"""
 
 # ╔═╡ 1b12f164-be6e-444c-bba8-c27b1cccb730
 deposition = @reaction_network begin
@@ -85,68 +92,118 @@ deposition = @reaction_network begin
 	k, 2SiCl₂ --> SiCl₄ + Si_dep 
 end 
 
-# ╔═╡ 21426370-833c-4377-a88e-55ef22179792
-parameters(deposition)
+# ╔═╡ b7222499-de8e-452f-ab52-e1a443109147
+md"""
+## Simulation
+"""
 
-# ╔═╡ 6bc912ba-7bea-4512-96bf-1f14d3e87db9
-species(deposition)
+# ╔═╡ b9e889d9-5edb-498e-b560-fd699fe2de73
+md"""
+## Physical System
+
+Reactor Volume: $(@bind reactor_volume PlutoUI.NumberField(10:0.1:2500., default=100.)) L
+
+Wafer Diameter: $(@bind wafer_diameter PlutoUI.NumberField(10:45, default=30)) cm
+
+Temperature: $(@bind temperature PlutoUI.NumberField(950:1250, default=1000)) K
+
+Initial SiCl₄ Pressure: $(@bind p_SiCl₄⁰ PlutoUI.NumberField(1:1:760, default=1)) mmHg
+
+Initial H₂ Pressure: $(@bind p_H₂⁰ PlutoUI.NumberField(1:1:760, default=1)) mmHg
+"""
 
 # ╔═╡ 57abbd90-8670-4117-ae4c-dce562abe162
 begin
-
 	odesys2 = convert(ODESystem, deposition, combinatoric_ratelaws=false)
 	# combinatoric_ratelaws = false makes it so that the rate laws are elementary with regard to stoichiometry, and coefficients aren't based on factorials
 
-	u₀map2 = [:SiCl₄ => 10.0, 
-			:H₂ => 10.0, 
-			:Si_dep => 0.0,
-			:Si_etch => 0.0,
-			:HCl => 0.0, 
-			:SiCl₂ => 0.0,
-			:k => k,
-			:T => 950]
-	
-	timespan2 = (0.0, 30.0)
-	
+	# initial values
+	u₀map2 = [
+		:SiCl₄   => p_SiCl₄⁰ / 760 / reactor_volume, 
+		:H₂      => p_H₂⁰ / 760 / reactor_volume, 
+		:Si_dep  => 0.0,
+		:Si_etch => 0.0,
+		:HCl 	 => 0.0, 
+		:SiCl₂   => 0.0,
+		:k 		 => k,
+		:T 		 => temperature
+	]
+
+	# time interval of simulation
+	timespan2 = (0.0, 7200.0)
+
+	# define the ODEs and solve
 	prob2 = ODEProblem(deposition, u₀map2, timespan2)
-
 	sol2 = DataFrame(solve(prob2, Tsit5(), saveat=0.05, maxiters=1e8))
-
-	
-	
 end
 
 # ╔═╡ 05db1f52-1c87-465f-8b1b-25e45aed6d0b
+# view the system of equations
 odesys2
 
 # ╔═╡ d5bad535-7150-40a9-b319-0c86617264e1
 begin
+	# test the mole balance w/ the deposition/etching tracking scheme
 	a = sol2[1, "SiCl₄(t)"]
 	b = sol2[end, "SiCl₄(t)"] + sol2[end, "SiCl₂(t)"] + sol2[end, "Si_dep(t)"] - sol2[end, "Si_etch(t)"]
 
-	isapprox(a, b)
-end
+	# Si_net must be within acceptable margin of difference between initial and final gaseous species amounts
+	@assert isapprox(a, b)
+end;
+
+# ╔═╡ a2469790-8df5-4c89-b683-6b140004a928
+function film_thickness(Si_dep, Si_etch; 
+		V=reactor_volume, d=wafer_diameter, ρ=ρ_Si, MW=MW_Si)
+	Si_net   = Si_dep - Si_etch # net pseudo-concentration of deposited Si
+	net_mol  = Si_net * V # net moles deposited Si
+	dep_mass = net_mol * MW # net mass deposited Si (g)
+	dep_vol  = dep_mass / ρ # net volume deposited Si (cm³)
+	δ 		 = dep_vol / (π * d^2 / 4) * 1e4 # film thickness (μm)
+	return δ
+end;
+
+# ╔═╡ abdcb165-78ee-4b84-9735-72c085bfd76e
+δ = film_thickness.(sol2[:, "Si_dep(t)"], sol2[:, "Si_etch(t)"])
+
+# ╔═╡ 35d612fb-b859-42b1-9ea2-ae90ad01dfb8
+md"""
+## Result
+"""
 
 # ╔═╡ db312b27-f0f5-47de-a074-1a2a8db3d62b
 begin
-fig2 = Figure()
-	ax2 = Axis(fig2[1,1],
-	title = "Gas Phase",
-	ylabel="Species Concentration",
-	xlabel="Time [s]")
+	fig2 = Figure()
+	ax2 = Axis(
+		fig2[1,1],
+		title = "Gas Phase",
+		ylabel="Species Concentration",
+		xlabel="Time [s]"
+	)
 	
-
-		lines!(sol2[:, :timestamp], sol2[:, "SiCl₄(t)"], label="SiCl₄")
-		lines!(sol2[:, :timestamp], sol2[:, "H₂(t)"], label="H₂")
-		lines!(sol2[:, :timestamp], sol2[:, "HCl(t)"], label="HCl")
-		lines!(sol2[:, :timestamp], sol2[:, "Si_dep(t)"], label="Si_dep")
-		lines!(sol2[:, :timestamp], sol2[:, "Si_etch(t)"], label="Si_etch")
-		lines!(sol2[:, :timestamp], sol2[:, "SiCl₂(t)"], label="SiCl₂")
+	lines!(sol2[:, :timestamp], sol2[:, "SiCl₄(t)"], label="SiCl₄")
+	lines!(sol2[:, :timestamp], sol2[:, "H₂(t)"], label="H₂")
+	lines!(sol2[:, :timestamp], sol2[:, "HCl(t)"], label="HCl")
+	lines!(sol2[:, :timestamp], sol2[:, "SiCl₂(t)"], label="SiCl₂")
 
 	axislegend(ax2, position =:lt)
 
+	ax3 = Axis(
+		fig2[2,1],
+		title="Film Growth",
+		xlabel="Time [s]",
+		ylabel="δ [μm]"
+	)
+	lines!(sol2[:, :timestamp], δ)
+
 	fig2
 end
+
+# ╔═╡ abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
+md"""
+**Maximum Film Thickness**: $(round(maximum(δ), digits=2)) μm
+
+**Time to Maximum Thickness**: $(sol2[argmax(δ), :timestamp]) s
+"""
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -155,12 +212,14 @@ CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Catalyst = "479239e8-5488-4da2-87a7-35f2df7eef83"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
+PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 
 [compat]
 CairoMakie = "~0.7.3"
 Catalyst = "~10.5.0"
 DataFrames = "~1.3.2"
 DifferentialEquations = "~7.1.0"
+PlutoUI = "~0.7.35"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -181,6 +240,12 @@ deps = ["ChainRulesCore", "LinearAlgebra"]
 git-tree-sha1 = "6f1d9bc1c08f9f4a8fa92e3ea3cb50153a1b40d4"
 uuid = "621f4979-c628-5d54-868e-fcf4e3e8185c"
 version = "1.1.0"
+
+[[deps.AbstractPlutoDingetjes]]
+deps = ["Pkg"]
+git-tree-sha1 = "8eaf9f1b4921132a4cff3f36a1d9ba923b14a481"
+uuid = "6e696c72-6542-2067-7265-42206c756150"
+version = "1.1.4"
 
 [[deps.AbstractTrees]]
 git-tree-sha1 = "03e0550477d86222521d254b741d470ba17ea0b5"
@@ -785,6 +850,23 @@ git-tree-sha1 = "d8bccde6fc8300703673ef9e1383b11403ac1313"
 uuid = "e33a78d0-f292-5ffc-b300-72abe9b543c8"
 version = "2.7.0+0"
 
+[[deps.Hyperscript]]
+deps = ["Test"]
+git-tree-sha1 = "8d511d5b81240fc8e6802386302675bdf47737b9"
+uuid = "47d2ed2b-36de-50cf-bf87-49c2cf4b8b91"
+version = "0.0.4"
+
+[[deps.HypertextLiteral]]
+git-tree-sha1 = "2b078b5a615c6c0396c77810d92ee8c6f470d238"
+uuid = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
+version = "0.9.3"
+
+[[deps.IOCapture]]
+deps = ["Logging", "Random"]
+git-tree-sha1 = "f7be53659ab06ddc986428d3a9dcc95f6fa6705a"
+uuid = "b5f81e59-6552-4d32-b1f0-c071b021bf89"
+version = "0.2.2"
+
 [[deps.IfElse]]
 git-tree-sha1 = "debdd00ffef04665ccbb3e150747a77560e8fad1"
 uuid = "615f187c-cbe4-4ef1-ba3b-2fcf58d6d173"
@@ -1341,6 +1423,12 @@ deps = ["ColorSchemes", "Colors", "Dates", "Printf", "Random", "Reexport", "Stat
 git-tree-sha1 = "6f1b25e8ea06279b5689263cc538f51331d7ca17"
 uuid = "995b91a9-d308-5afd-9ec6-746e21dbc043"
 version = "1.1.3"
+
+[[deps.PlutoUI]]
+deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "Markdown", "Random", "Reexport", "UUIDs"]
+git-tree-sha1 = "85bf3e4bd279e405f91489ce518dedb1e32119cb"
+uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
+version = "0.7.35"
 
 [[deps.PoissonRandom]]
 deps = ["Random", "Statistics", "Test"]
@@ -1993,22 +2081,24 @@ version = "3.5.0+0"
 """
 
 # ╔═╡ Cell order:
+# ╟─2ec89215-0634-498c-94ee-389b9b8d7034
 # ╠═7e17fa70-86c6-11ec-1a61-41e7e9a383ec
-# ╠═96df1a34-a1c0-4785-b5de-bb22426d8888
+# ╟─036cb0e3-e198-49f7-8221-3593fbeebb95
 # ╠═e4cec0ae-04d4-4360-998d-5f367063662c
-# ╠═9950524f-18c5-4c13-9ec3-ab3865622179
-# ╠═fa30faba-fde2-4fd1-8040-0fb3050b6537
-# ╠═0a274653-5129-4bb3-96a1-742276fd098b
-# ╠═41d8425a-0c29-48b2-97fc-d1c4fc49df67
-# ╠═214b86c5-2aa9-42e3-855f-416e94a76550
-# ╠═9e99c1a5-8eb4-41a0-af8e-56142434967b
+# ╟─abb094af-f9c7-42a5-bdc7-d033ac9a5d72
+# ╠═bdee4229-9e84-4bdd-a836-985a2f4b96b0
 # ╠═c986672c-e787-41fc-9a25-63f498f24d4b
+# ╟─d7f3703a-dee2-46ce-a052-92d44938c965
 # ╠═1b12f164-be6e-444c-bba8-c27b1cccb730
-# ╠═21426370-833c-4377-a88e-55ef22179792
-# ╠═6bc912ba-7bea-4512-96bf-1f14d3e87db9
+# ╟─b7222499-de8e-452f-ab52-e1a443109147
 # ╠═57abbd90-8670-4117-ae4c-dce562abe162
 # ╠═05db1f52-1c87-465f-8b1b-25e45aed6d0b
 # ╠═d5bad535-7150-40a9-b319-0c86617264e1
+# ╠═a2469790-8df5-4c89-b683-6b140004a928
+# ╠═abdcb165-78ee-4b84-9735-72c085bfd76e
+# ╟─b9e889d9-5edb-498e-b560-fd699fe2de73
+# ╟─35d612fb-b859-42b1-9ea2-ae90ad01dfb8
 # ╠═db312b27-f0f5-47de-a074-1a2a8db3d62b
+# ╠═abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
