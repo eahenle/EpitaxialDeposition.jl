@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.5
+# v0.17.7
 
 using Markdown
 using InteractiveUtils
@@ -65,7 +65,7 @@ begin
     K1(T)  = K10 * exp(-Ea1 / (R * T)) # [cm³]
     K2(T)  = K20 * exp(-Ea2 / (R * T))
     K3(T)  = K30 * exp(-Ea3 / (R * T)) # units = 
-    kKp(T) = k * exp(10.38 - 16770 / T) 
+    kKp(T) = k * 10^(10.38 - 16770 / T) 
 end;
 
 # ╔═╡ c986672c-e787-41fc-9a25-63f498f24d4b
@@ -233,7 +233,7 @@ PlutoUI = "~0.7.35"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.7.0"
+julia_version = "1.7.1"
 manifest_format = "2.0"
 
 [[deps.AbstractAlgebra]]
@@ -409,9 +409,9 @@ version = "10.6.0"
 
 [[deps.ChainRulesCore]]
 deps = ["Compat", "LinearAlgebra", "SparseArrays"]
-git-tree-sha1 = "c9a6160317d1abe9c44b3beb367fd448117679ca"
+git-tree-sha1 = "32ad4ece064a61855a35bdc34e3da0b495e01169"
 uuid = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
-version = "1.13.0"
+version = "1.12.2"
 
 [[deps.ChangesOfVariables]]
 deps = ["ChainRulesCore", "LinearAlgebra", "Test"]
@@ -2120,7 +2120,7 @@ version = "3.5.0+0"
 # ╠═a2469790-8df5-4c89-b683-6b140004a928
 # ╠═57abbd90-8670-4117-ae4c-dce562abe162
 # ╠═d5bad535-7150-40a9-b319-0c86617264e1
-# ╠═b9e889d9-5edb-498e-b560-fd699fe2de73
+# ╟─b9e889d9-5edb-498e-b560-fd699fe2de73
 # ╟─35d612fb-b859-42b1-9ea2-ae90ad01dfb8
 # ╠═abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
 # ╠═fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
