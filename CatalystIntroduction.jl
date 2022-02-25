@@ -95,6 +95,10 @@ md"""
 ## Simulation
 """
 
+# ╔═╡ 245ddab0-9991-465c-9074-0d02392950c1
+# Define our simulation time step, which is also to be used in calculating the derivative of the film thickness as a function of time
+Δt = 0.05
+
 # ╔═╡ b9e889d9-5edb-498e-b560-fd699fe2de73
 md"""
 ## Physical System
@@ -120,7 +124,7 @@ function film_thickness(Si_dep, Si_etch;
     dep_mass = net_mol * MW # net mass deposited Si (g)
     dep_vol  = dep_mass / ρ # net volume deposited Si (cm³)
     δ        = dep_vol / (π * d^2 / 4) * 1e4 # film thickness (μm)
-    return δ > 0 ? δ : NaN
+    return δ >= 0 ? δ : NaN
 end;
 
 # ╔═╡ 57abbd90-8670-4117-ae4c-dce562abe162
@@ -145,7 +149,7 @@ begin
 
     # define the ODEs and solve
     prob = ODEProblem(deposition, u₀, timespan)
-    sol = DataFrame(solve(prob, Tsit5(), saveat=0.05, maxiters=1e8))
+    sol = DataFrame(solve(prob, Tsit5(), saveat=Δt, maxiters=1e8))
 	δ = film_thickness.(sol[:, "Si_dep(t)"], sol[:, "Si_etch(t)"])
 end;
 
@@ -206,7 +210,7 @@ begin
 
     Axis(
         fig[2,1],
-        title="Si Film Growth on a $wafer_diameter cm Wafer",
+        title="Si Film Growth on a $wafer_diameter cm Wafer, T = $temperature [K]",
         xlabel="Time [s]",
         ylabel="δ [μm]"
     )
@@ -216,11 +220,52 @@ begin
     fig
 end
 
+# ╔═╡ ed427b2f-2fa9-4659-9ad4-7d0c606721b2
+function estimate_derivative!(x::Vector)
+
+	dδ = zeros(length(x))
+	
+	for i = 1:length(x)-1
+
+		dδ[i] = (x[i+1] - x[i]) ./ Δt 
+		
+	end
+
+	return dδ
+end
+
+# ╔═╡ 3abf7000-0683-4238-9e89-57606aba09b6
+dδ = estimate_derivative!(δ)[1:end-1] # PAUL SAID DO THIS
+
+# the last element of this array doing a simple slope derivative is 0, so we just filter it out primatively 
+
+# ╔═╡ 4f95bf04-8f75-4ad4-9a2a-4c62be7b05c7
+idx = findfirst(dδ .<= 0.0) # find the position in the derivative where dδ = 0
+
+# ╔═╡ 23d028df-dbd7-4188-ae74-7da3c071e549
+md"""
+**Switched from Deposition to Etching at**: $(round(sol[idx, :timestamp], digits=2)) s
+"""
+
+# ╔═╡ e702092a-0b2e-475e-8dc1-51308be65c64
+begin
+
+	local fig = Figure()
+	local ax = Axis(fig[1,1],
+			title = "Si Film Growth Rate over Time",
+			ylabel = "δ Growth [μm/s]",
+			xlabel = "Time [s]")
+
+	lines!(ax, sol[1:end-1, :timestamp], estimate_derivative!(δ)[1:end-1])
+			# sloppy solution to selectively plotting
+
+	vlines!(ax, sol[idx, :timestamp], linestyle = :dash, color = :red)
+	fig
+
+end
+
 # ╔═╡ dcb60e56-3ddc-4463-aa64-2e462df82910
-# To-do: 
-# 1) Fit an expression to δ data to take derivative (film growth rate over time)
-# 2) Find the point at which we switch from growth to etching
-# 3) Parametric study of temperature on film thickness
+
 # 4) Comparison of rate constants at different temperatures to see dominant reactions
 
 # ╔═╡ 3b303ac4-42ee-4ab3-8893-d60035a2d4be
@@ -267,7 +312,8 @@ begin
 		
 		lines!(sol[:, :timestamp], δ, 
 				label = "T = $temperature [K]", 
-				color = ColorSchemes.viridis[round(Int, 256/length(temp_span))*i])
+				# color = ColorSchemes.viridis[round(Int, 256/length(temp_span))*i],
+				color = ColorSchemes.viridis[20*i])
 
 	end
 
@@ -281,6 +327,19 @@ begin
 	scatter!(ax2, temp_span, max_δ)
 	
 	fig
+
+end
+
+# ╔═╡ 4e829cbd-3d8c-4ef6-8898-1af9443f01ac
+begin
+
+	local fig = Figure()
+	local ax = Axis(fig[1,1],
+				title = "",
+				ylabel = "",
+				xlabel = "")
+
+	
 
 end
 
@@ -2191,15 +2250,22 @@ version = "3.5.0+0"
 # ╠═1b12f164-be6e-444c-bba8-c27b1cccb730
 # ╠═05db1f52-1c87-465f-8b1b-25e45aed6d0b
 # ╟─b7222499-de8e-452f-ab52-e1a443109147
+# ╠═245ddab0-9991-465c-9074-0d02392950c1
 # ╠═a2469790-8df5-4c89-b683-6b140004a928
 # ╠═57abbd90-8670-4117-ae4c-dce562abe162
 # ╠═d5bad535-7150-40a9-b319-0c86617264e1
-# ╠═b9e889d9-5edb-498e-b560-fd699fe2de73
+# ╟─b9e889d9-5edb-498e-b560-fd699fe2de73
 # ╟─35d612fb-b859-42b1-9ea2-ae90ad01dfb8
-# ╠═abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
-# ╠═fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
+# ╟─abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
+# ╟─fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
+# ╠═ed427b2f-2fa9-4659-9ad4-7d0c606721b2
+# ╟─3abf7000-0683-4238-9e89-57606aba09b6
+# ╠═4f95bf04-8f75-4ad4-9a2a-4c62be7b05c7
+# ╟─23d028df-dbd7-4188-ae74-7da3c071e549
+# ╠═e702092a-0b2e-475e-8dc1-51308be65c64
 # ╠═dcb60e56-3ddc-4463-aa64-2e462df82910
 # ╠═3b303ac4-42ee-4ab3-8893-d60035a2d4be
 # ╠═96528e86-2a83-4b59-a412-de66b4475d52
+# ╠═4e829cbd-3d8c-4ef6-8898-1af9443f01ac
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
