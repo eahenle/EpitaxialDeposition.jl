@@ -184,11 +184,11 @@ end
 begin
 	fig = Figure()
     
-	Axis(
+	ax = Axis(
 		fig[1,1],
         title = "Gas-Phase Species",
         ylabel="Concentration [mmol/L]",
-        xlabel="Time [sec]"
+        xlabel="Time [s]"
 	)
 
 	plotted_species = setdiff(
@@ -200,11 +200,12 @@ begin
         lines!(sol[:, :timestamp], 1000 .* sol[:, name], label=chop(name, tail=3))
     end
 
-	axislegend()
+	fig[1,2] = Legend(fig, ax)
+
 
     Axis(
         fig[2,1],
-        title="Film Growth",
+        title="Si Film Growth on a $wafer_diameter cm Wafer",
         xlabel="Time [s]",
         ylabel="δ [μm]"
     )
@@ -213,6 +214,11 @@ begin
 
     fig
 end
+
+# ╔═╡ dcb60e56-3ddc-4463-aa64-2e462df82910
+# To-do: 
+# 1) Fit an expression to δ data to take derivative (film growth rate over time)
+# 2) Find the point at which we switch from growth to etching
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -2125,6 +2131,7 @@ version = "3.5.0+0"
 # ╟─b9e889d9-5edb-498e-b560-fd699fe2de73
 # ╟─35d612fb-b859-42b1-9ea2-ae90ad01dfb8
 # ╟─abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
-# ╟─fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
+# ╠═fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
+# ╠═dcb60e56-3ddc-4463-aa64-2e462df82910
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
