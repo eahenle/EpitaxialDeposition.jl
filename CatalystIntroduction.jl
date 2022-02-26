@@ -85,8 +85,8 @@ md"""
 # ╔═╡ 1b12f164-be6e-444c-bba8-c27b1cccb730
 deposition = @reaction_network begin
     K(T), SiCl₄ + 2H₂ --> Si_dep + 4HCl
-    K2(T), 2HCl --> SiCl₂ + H₂ + Si_etch
-    kKp(T), SiCl₄ --> 2SiCl₂ + Si_etch
+    K2(T), 2HCl --> SiCl₂ + H₂ + Si_etch # Si etching by HCl
+    kKp(T), SiCl₄ --> 2SiCl₂ + Si_etch # Si etching by SiCl₄
     k, 2SiCl₂ --> SiCl₄ + Si_dep 
 end 
 
@@ -256,7 +256,7 @@ begin
 			ylabel = "δ Growth [μm/s]",
 			xlabel = "Time [s]")
 
-	lines!(ax, sol[1:end-1, :timestamp], estimate_derivative!(δ)[1:end-1])
+	lines!(ax, sol[1:end-1, :timestamp], dδ)
 			# sloppy solution to selectively plotting
 
 	vlines!(ax, sol[idx, :timestamp], linestyle = :dash, color = :red)
@@ -264,12 +264,13 @@ begin
 
 end
 
-# ╔═╡ dcb60e56-3ddc-4463-aa64-2e462df82910
-
-# 4) Comparison of rate constants at different temperatures to see dominant reactions
-
 # ╔═╡ 3b303ac4-42ee-4ab3-8893-d60035a2d4be
 md"Temperature Range: $(@bind temp_span PlutoUI.RangeSlider(900:50:1400)) K"
+
+# ╔═╡ 7b58b65f-a35a-461e-a4b6-4cb16646642e
+md"
+## Parametric Study #1: 
+### Influence of Temperature on Film Thickness"
 
 # ╔═╡ 96528e86-2a83-4b59-a412-de66b4475d52
 begin
@@ -330,16 +331,36 @@ begin
 
 end
 
+# ╔═╡ 084b9228-5deb-4cef-bf6b-d962ca884dbe
+md"
+## Parametric Study #2: 
+### Influence of Temperature on Reaction Rates"
+
 # ╔═╡ 4e829cbd-3d8c-4ef6-8898-1af9443f01ac
 begin
 
 	local fig = Figure()
 	local ax = Axis(fig[1,1],
-				title = "",
-				ylabel = "",
-				xlabel = "")
-
+				title = "Forward Reaction Rate Constants",
+				ylabel = "Rate Constant Value [cm/s]",
+				xlabel = "Temperature [K]")
 	
+	T = collect(range(temp_span[1], step=Δt, temp_span[end]))
+	
+	lines!(ax, T, K.(T), label = "SiCl₄ + 2H₂ --> Si_dep + 4HCl")
+	lines!(ax, T, K2.(T), label = "2HCl --> SiCl₂ + H₂ + Si_etch")
+
+	fig[1,2] = Legend(fig, ax)
+
+	local ax = Axis(fig[2,1],
+				ylabel = "Equilibrium Rate Constant [∅]",
+				xlabel = "Temperature [K]")
+
+	lines!(ax, T, kKp.(T), label = "SiCl₄ --> 2SiCl₂ + Si_etch")
+
+	fig[2,2] = Legend(fig, ax)
+	
+	fig
 
 end
 
@@ -2263,9 +2284,10 @@ version = "3.5.0+0"
 # ╠═4f95bf04-8f75-4ad4-9a2a-4c62be7b05c7
 # ╟─23d028df-dbd7-4188-ae74-7da3c071e549
 # ╠═e702092a-0b2e-475e-8dc1-51308be65c64
-# ╠═dcb60e56-3ddc-4463-aa64-2e462df82910
 # ╠═3b303ac4-42ee-4ab3-8893-d60035a2d4be
-# ╠═96528e86-2a83-4b59-a412-de66b4475d52
-# ╠═4e829cbd-3d8c-4ef6-8898-1af9443f01ac
+# ╟─7b58b65f-a35a-461e-a4b6-4cb16646642e
+# ╟─96528e86-2a83-4b59-a412-de66b4475d52
+# ╟─084b9228-5deb-4cef-bf6b-d962ca884dbe
+# ╟─4e829cbd-3d8c-4ef6-8898-1af9443f01ac
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
