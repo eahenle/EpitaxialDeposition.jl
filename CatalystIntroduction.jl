@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.7
+# v0.18.1
 
 using Markdown
 using InteractiveUtils
@@ -61,10 +61,10 @@ md"""
 # ╔═╡ bdee4229-9e84-4bdd-a836-985a2f4b96b0
 begin
     # define the equilibrium constant expressions
-    K(T)   = K0  * exp(-E   / (R * T))
-    K1(T)  = K10 * exp(-Ea1 / (R * T)) # [cm³]
-    K2(T)  = K20 * exp(-Ea2 / (R * T))
-    K3(T)  = K30 * exp(-Ea3 / (R * T)) # units = 
+    K(T)   = K0  * exp(-E   / (R * T)) # [cm/s]
+    # K1(T)  = K10 * exp(-Ea1 / (R * T)) # [cm³]
+    K2(T)  = K20 * exp(-Ea2 / (R * T)) # [cm/s]
+    K3(T)  = K30 * exp(-Ea3 / (R * T)) # [cm/s]
     kKp(T) = k * 10^(10.38 - 16770 / T) 
 end;
 
@@ -225,9 +225,9 @@ function estimate_derivative!(x::Vector)
 
 	dδ = zeros(length(x))
 	
-	for i = 1:length(x)-1
+	for i = 2:length(x)
 
-		dδ[i] = (x[i+1] - x[i]) ./ Δt 
+		dδ[i-1] = (x[i] - x[i-1]) ./ Δt 
 		
 	end
 
@@ -243,9 +243,13 @@ dδ = estimate_derivative!(δ)[1:end-1] # PAUL SAID DO THIS
 idx = findfirst(dδ .<= 0.0) # find the position in the derivative where dδ = 0
 
 # ╔═╡ 23d028df-dbd7-4188-ae74-7da3c071e549
+if ! isnothing(idx)
+	
 md"""
-**Switched from Deposition to Etching at**: $(round(sol[idx, :timestamp], digits=2)) s
+** Switched from Deposition to Etching at**: $(round(sol[idx, :timestamp], digits=2)) s
 """
+
+end
 
 # ╔═╡ e702092a-0b2e-475e-8dc1-51308be65c64
 begin
@@ -259,7 +263,12 @@ begin
 	lines!(ax, sol[1:end-1, :timestamp], dδ)
 			# sloppy solution to selectively plotting
 
-	vlines!(ax, sol[idx, :timestamp], linestyle = :dash, color = :red)
+	if ! isnothing(idx)
+		
+		vlines!(ax, sol[idx, :timestamp], linestyle = :dash, color = :red)
+
+	end
+	
 	fig
 
 end
@@ -318,7 +327,8 @@ begin
 
 	end
 
-	fig[1,2] = Legend(fig, ax)
+	# fig[1,2] = Legend(fig, ax)
+	Colorbar(fig[1,2], limits = (temp_span[1], temp_span[end]), colormap=:viridis)
 
 	local ax2 = Axis(fig[2,1],
 		title ="",
@@ -2278,7 +2288,7 @@ version = "3.5.0+0"
 # ╟─b9e889d9-5edb-498e-b560-fd699fe2de73
 # ╟─35d612fb-b859-42b1-9ea2-ae90ad01dfb8
 # ╟─abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
-# ╟─fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
+# ╠═fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
 # ╠═ed427b2f-2fa9-4659-9ad4-7d0c606721b2
 # ╟─3abf7000-0683-4238-9e89-57606aba09b6
 # ╠═4f95bf04-8f75-4ad4-9a2a-4c62be7b05c7
@@ -2286,7 +2296,7 @@ version = "3.5.0+0"
 # ╠═e702092a-0b2e-475e-8dc1-51308be65c64
 # ╠═3b303ac4-42ee-4ab3-8893-d60035a2d4be
 # ╟─7b58b65f-a35a-461e-a4b6-4cb16646642e
-# ╟─96528e86-2a83-4b59-a412-de66b4475d52
+# ╠═96528e86-2a83-4b59-a412-de66b4475d52
 # ╟─084b9228-5deb-4cef-bf6b-d962ca884dbe
 # ╟─4e829cbd-3d8c-4ef6-8898-1af9443f01ac
 # ╟─00000000-0000-0000-0000-000000000001
