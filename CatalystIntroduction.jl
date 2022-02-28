@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.18.0
+# v0.17.7
 
 using Markdown
 using InteractiveUtils
@@ -16,10 +16,10 @@ end
 
 # ╔═╡ 7e17fa70-86c6-11ec-1a61-41e7e9a383ec
 begin
-    # simulation/solver packages
-    using Catalyst, DifferentialEquations
-    # notebook utilities
-    using CairoMakie, DataFrames, PlutoUI
+	# simulation/solver packages
+	using Catalyst, DifferentialEquations
+	# notebook utilities
+	using CairoMakie, DataFrames, PlutoUI, ColorSchemes
 end
 
 # ╔═╡ 2ec89215-0634-498c-94ee-389b9b8d7034
@@ -120,7 +120,7 @@ function film_thickness(Si_dep, Si_etch;
     dep_mass = net_mol * MW # net mass deposited Si (g)
     dep_vol  = dep_mass / ρ # net volume deposited Si (cm³)
     δ        = dep_vol / (π * d^2 / 4) * 1e4 # film thickness (μm)
-    return δ
+    return δ > 0 ? δ : NaN
 end;
 
 # ╔═╡ 57abbd90-8670-4117-ae4c-dce562abe162
@@ -182,13 +182,14 @@ end
 
 # ╔═╡ fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
 begin
-	fig = Figure()
+	
+	local fig = Figure()
     
-	Axis(
+	local ax = Axis(
 		fig[1,1],
         title = "Gas-Phase Species",
         ylabel="Concentration [mmol/L]",
-        xlabel="Time [sec]"
+        xlabel="Time [s]"
 	)
 
 	plotted_species = setdiff(
@@ -200,11 +201,12 @@ begin
         lines!(sol[:, :timestamp], 1000 .* sol[:, name], label=chop(name, tail=3))
     end
 
-	axislegend()
+	fig[1,2] = Legend(fig, ax)
+
 
     Axis(
         fig[2,1],
-        title="Film Growth",
+        title="Si Film Growth on a $wafer_diameter cm Wafer",
         xlabel="Time [s]",
         ylabel="δ [μm]"
     )
@@ -214,11 +216,80 @@ begin
     fig
 end
 
+# ╔═╡ dcb60e56-3ddc-4463-aa64-2e462df82910
+# To-do: 
+# 1) Fit an expression to δ data to take derivative (film growth rate over time)
+# 2) Find the point at which we switch from growth to etching
+# 3) Parametric study of temperature on film thickness
+# 4) Comparison of rate constants at different temperatures to see dominant reactions
+
+# ╔═╡ 3b303ac4-42ee-4ab3-8893-d60035a2d4be
+md"Temperature Range: $(@bind temp_span PlutoUI.RangeSlider(900:50:1400)) K"
+
+# ╔═╡ 96528e86-2a83-4b59-a412-de66b4475d52
+begin
+
+	local fig = Figure()
+
+	local ax = Axis(
+		fig[1,1],
+		title="Parametric Study of Temperature on Film Thickness",
+        xlabel="Time [s]",
+        ylabel="δ [μm]"
+	)
+
+	max_δ = zeros(length(temp_span))
+	
+	for (i,temperature) in enumerate(temp_span)
+	    
+		# initial values	
+	    u₀ = [
+	        :SiCl₄   => p_SiCl₄⁰ / 62.4 / temperature,
+	        :H₂      => p_H₂⁰ / 62.4 / temperature,
+	        :Si_dep  => 0.0,
+	        :Si_etch => 0.0,
+	        :HCl     => 0.0, 
+	        :SiCl₂   => 0.0,
+	        :k       => k,
+	        :T       => temperature
+	    ]
+	
+	    # time interval of simulation
+	    timespan = (0.0, t_max)
+	
+	    # define the ODEs and solve
+	    prob = ODEProblem(deposition, u₀, timespan)
+	    sol = DataFrame(solve(prob, Tsit5(), saveat=0.05, maxiters=1e8))
+		δ = film_thickness.(sol[:, "Si_dep(t)"], sol[:, "Si_etch(t)"])
+
+		not_NaN = isnan.(δ) .== false
+		max_δ[i] = maximum(δ[not_NaN])
+		
+		lines!(sol[:, :timestamp], δ, 
+				label = "T = $temperature [K]", 
+				color = ColorSchemes.viridis[round(Int, 256/length(temp_span))*i])
+
+	end
+
+	fig[1,2] = Legend(fig, ax)
+
+	local ax2 = Axis(fig[2,1],
+		title ="",
+		xlabel = "Temperature [K]",
+		ylabel = "Maximum δ [μm]")
+
+	scatter!(ax2, temp_span, max_δ)
+	
+	fig
+
+end
+
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Catalyst = "479239e8-5488-4da2-87a7-35f2df7eef83"
+ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
@@ -226,6 +297,7 @@ PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 [compat]
 CairoMakie = "~0.7.4"
 Catalyst = "~10.6.0"
+ColorSchemes = "~3.17.1"
 DataFrames = "~1.3.2"
 DifferentialEquations = "~7.1.0"
 PlutoUI = "~0.7.35"
@@ -2122,9 +2194,14 @@ version = "3.5.0+0"
 # ╠═a2469790-8df5-4c89-b683-6b140004a928
 # ╠═57abbd90-8670-4117-ae4c-dce562abe162
 # ╠═d5bad535-7150-40a9-b319-0c86617264e1
-# ╟─b9e889d9-5edb-498e-b560-fd699fe2de73
+# ╠═b9e889d9-5edb-498e-b560-fd699fe2de73
 # ╟─35d612fb-b859-42b1-9ea2-ae90ad01dfb8
 # ╟─abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
 # ╠═fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
+# ╠═abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
+# ╠═fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
+# ╠═dcb60e56-3ddc-4463-aa64-2e462df82910
+# ╠═3b303ac4-42ee-4ab3-8893-d60035a2d4be
+# ╠═96528e86-2a83-4b59-a412-de66b4475d52
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
