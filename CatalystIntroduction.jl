@@ -230,30 +230,16 @@ function estimate_derivative!(x::Vector)
 		dδ[i-1] = (x[i] - x[i-1]) ./ Δt 
 		
 	end
-
-	return dδ
-end
-
-# ╔═╡ 3abf7000-0683-4238-9e89-57606aba09b6
-dδ = estimate_derivative!(δ)[1:end-1] # PAUL SAID DO THIS
-
-# the last element of this array doing a simple slope derivative is 0, so we just filter it out primatively 
-
-# ╔═╡ 4f95bf04-8f75-4ad4-9a2a-4c62be7b05c7
-idx = findfirst(dδ .<= 0.0) # find the position in the derivative where dδ = 0
-
-# ╔═╡ 23d028df-dbd7-4188-ae74-7da3c071e549
-if ! isnothing(idx)
 	
-md"""
-** Switched from Deposition to Etching at**: $(round(sol[idx, :timestamp], digits=2)) s
-"""
-
+	return dδ[1:end-1]
 end
 
 # ╔═╡ e702092a-0b2e-475e-8dc1-51308be65c64
 begin
 
+	dδ = estimate_derivative!(δ)
+	idx = findfirst(dδ .<= 0.0) # find the position in the derivative where dδ = 0, if it exists
+	
 	local fig = Figure()
 	local ax = Axis(fig[1,1],
 			title = "Si Film Growth Rate over Time",
@@ -262,7 +248,7 @@ begin
 
 	lines!(ax, sol[1:end-1, :timestamp], dδ)
 			# sloppy solution to selectively plotting
-
+	
 	if ! isnothing(idx)
 		
 		vlines!(ax, sol[idx, :timestamp], linestyle = :dash, color = :red)
@@ -270,6 +256,15 @@ begin
 	end
 	
 	fig
+
+end
+
+# ╔═╡ 23d028df-dbd7-4188-ae74-7da3c071e549
+if ! isnothing(idx)
+	
+md"""
+** Switched from Deposition to Etching at**: $(round(sol[idx, :timestamp], digits=2)) s
+"""
 
 end
 
@@ -317,17 +312,15 @@ begin
 	    sol = DataFrame(solve(prob, Tsit5(), saveat=0.05, maxiters=1e8))
 		δ = film_thickness.(sol[:, "Si_dep(t)"], sol[:, "Si_etch(t)"])
 
-		not_NaN = isnan.(δ) .== false
-		max_δ[i] = maximum(δ[not_NaN])
+		not_NaN = isnan.(δ) .== false # find all values in δ that aren't NaN
+		max_δ[i] = maximum(δ[not_NaN]) # use not_NaN as a mask
 		
 		lines!(sol[:, :timestamp], δ, 
 				label = "T = $temperature [K]", 
-				# color = ColorSchemes.viridis[round(Int, 256/length(temp_span))*i],
 				color = ColorSchemes.viridis[20*i])
 
 	end
 
-	# fig[1,2] = Legend(fig, ax)
 	Colorbar(fig[1,2], limits = (temp_span[1], temp_span[end]), colormap=:viridis)
 
 	local ax2 = Axis(fig[2,1],
@@ -2290,8 +2283,6 @@ version = "3.5.0+0"
 # ╟─abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
 # ╠═fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
 # ╠═ed427b2f-2fa9-4659-9ad4-7d0c606721b2
-# ╟─3abf7000-0683-4238-9e89-57606aba09b6
-# ╠═4f95bf04-8f75-4ad4-9a2a-4c62be7b05c7
 # ╟─23d028df-dbd7-4188-ae74-7da3c071e549
 # ╠═e702092a-0b2e-475e-8dc1-51308be65c64
 # ╠═3b303ac4-42ee-4ab3-8893-d60035a2d4be
