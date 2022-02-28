@@ -16,10 +16,10 @@ end
 
 # ╔═╡ 7e17fa70-86c6-11ec-1a61-41e7e9a383ec
 begin
-	# simulation/solver packages
-	using Catalyst, DifferentialEquations
-	# notebook utilities
-	using CairoMakie, DataFrames, PlutoUI
+    # simulation/solver packages
+    using Catalyst, DifferentialEquations
+    # notebook utilities
+    using CairoMakie, DataFrames, PlutoUI
 end
 
 # ╔═╡ 2ec89215-0634-498c-94ee-389b9b8d7034
@@ -47,7 +47,7 @@ begin
 	
     const R = 1.985e-3 # kcal/mol-K
 
-    const k = 1e-3 # random parameter for using Kp
+    const k = 1 # random parameter for using Kp
 
     const ρ_Si  = 2.33 # g/cm³
     const MW_Si = 28.086 # g/mol
@@ -130,8 +130,8 @@ begin
 
     # initial values
     u₀ = [
-        :SiCl₄   => p_SiCl₄⁰ / 62.4 / temperature,
-        :H₂      => p_H₂⁰ / 62.4 / temperature,
+        :SiCl₄   => p_SiCl₄⁰ / 62.4 / temperature, # n/V = P/R/T
+        :H₂      => p_H₂⁰    / 62.4 / temperature,
         :Si_dep  => 0.0,
         :Si_etch => 0.0,
         :HCl     => 0.0, 
@@ -2125,6 +2125,6 @@ version = "3.5.0+0"
 # ╟─b9e889d9-5edb-498e-b560-fd699fe2de73
 # ╟─35d612fb-b859-42b1-9ea2-ae90ad01dfb8
 # ╟─abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
-# ╟─fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
+# ╠═fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
