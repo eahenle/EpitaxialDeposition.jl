@@ -47,7 +47,7 @@ begin
     
     const R = 1.985e-3 # kcal/mol-K
 
-    const k = 1e-3 # random parameter for using Kp
+    const k = 1 # random parameter for using Kp
 
     const ρ_Si  = 2.33   # g/cm³
     const MW_Si = 28.086 # g/mol
@@ -2385,6 +2385,8 @@ version = "3.5.0+0"
 # ╠═b9e889d9-5edb-498e-b560-fd699fe2de73
 # ╠═eba36605-ea73-4e2a-8cfc-cf3d9533cdc6
 # ╟─35d612fb-b859-42b1-9ea2-ae90ad01dfb8
+# ╟─abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
+# ╠═fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
 # ╠═abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
 # ╠═fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
 # ╟─ed427b2f-2fa9-4659-9ad4-7d0c606721b2
