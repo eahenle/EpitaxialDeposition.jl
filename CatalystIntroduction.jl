@@ -236,21 +236,6 @@ function estimate_derivative!(x::Vector)
     return dδ[1:end-1]
 end
 
-# ╔═╡ 3abf7000-0683-4238-9e89-57606aba09b6
-dδ = estimate_derivative!(δ)[1:end-1] # PAUL SAID DO THIS
-
-# the last element of this array doing a simple slope derivative is 0, so we just filter it out primatively 
-
-# ╔═╡ 4f95bf04-8f75-4ad4-9a2a-4c62be7b05c7
-idx = findfirst(dδ .<= 0.0) # find the position in the derivative where dδ = 0
-
-# ╔═╡ 23d028df-dbd7-4188-ae74-7da3c071e549
-if ! isnothing(idx)
-md"""
-**Switched from Deposition to Etching at**: $(round(sol[idx, :timestamp], digits=2)) s
-"""
-end
-
 # ╔═╡ e702092a-0b2e-475e-8dc1-51308be65c64
 begin
 
@@ -295,9 +280,7 @@ md"
 
 # ╔═╡ 96528e86-2a83-4b59-a412-de66b4475d52
 begin
-
     local fig = Figure()
-
     local ax = Axis(
         fig[1,1],
         title="Parametric Study of Temperature on Film Thickness",
@@ -305,12 +288,11 @@ begin
         ylabel="δ [μm]"
     )
 
-    max_δ = zeros(length(temp_span))
+    local max_δ = zeros(length(temp_span))
     
     for (i,temp) in enumerate(temp_span)
-        
         # initial values    
-        u₀ = [
+        local u₀ = [
             :SiCl₄   => p_SiCl₄⁰ / 62.4 / temp,
             :H₂      => p_H₂⁰ / 62.4 / temp,
             :Si_dep  => 0.0,
@@ -321,35 +303,35 @@ begin
             :T       => temp
         ]
     
-        # time interval of simulation
-        timespan = (0.0, t_max)
+        # time interval of simulations
+        local timespan = (0.0, t_max)
     
         # define the ODEs and solve
-        prob = ODEProblem(deposition, u₀, timespan)
-        sol = DataFrame(solve(prob, Tsit5(), saveat=0.05, maxiters=1e8))
+        local prob = ODEProblem(deposition, u₀, timespan)
+        local sol = DataFrame(solve(prob, Tsit5(), saveat=0.05, maxiters=1e8))
         local δ = film_thickness.(sol[:, "Si_dep(t)"], sol[:, "Si_etch(t)"])
 
         non_negative = δ .> 0.0 # find all values in δ that aren't NaN
         max_δ[i] = maximum(δ[non_negative]) # use not_NaN as a mask
 
-    
-        lines!(sol[non_negative, :timestamp], δ[non_negative], 
-                label = "T = $temp [K]", 
-                color = ColorSchemes.viridis[20*i])
+        lines!(
+			sol[non_negative, :timestamp], δ[non_negative], 
+			color=ColorSchemes.viridis[20*i]
+		)
 
     end
 
     Colorbar(fig[1,2], limits = (temp_span[1], temp_span[end]), colormap=:viridis)
 
-    local ax2 = Axis(fig[2,1],
-        title ="",
-        xlabel = "Temperature [K]",
-        ylabel = "Maximum δ [μm]")
+    local ax2 = Axis(
+		fig[2,1],
+        xlabel="Temperature [K]",
+        ylabel="Maximum δ [μm]"
+	)
 
     scatter!(ax2, temp_span, max_δ)
     
     fig
-
 end
 
 # ╔═╡ 084b9228-5deb-4cef-bf6b-d962ca884dbe
@@ -360,28 +342,31 @@ md"
 # ╔═╡ 4e829cbd-3d8c-4ef6-8898-1af9443f01ac
 begin
     local fig = Figure()
-    local ax = Axis(fig[1,1],
-                title = "Forward Reaction Rate Constants",
-                ylabel = "Rate Constant Value [cm/s]",
-                xlabel = "Temperature [K]")
+    local ax = Axis(
+		fig[1,1],
+		title="Forward Reaction Rate Constants",
+		ylabel="Rate Constant Value [cm/s]",
+		xlabel="Temperature [K]"
+	)
     
     T = collect(range(temp_span[1], step=Δt, temp_span[end]))
     
-    lines!(ax, T, K.(T), label = "SiCl₄ + 2H₂ --> Si_dep + 4HCl")
-    lines!(ax, T, K2.(T), label = "2HCl --> SiCl₂ + H₂ + Si_etch")
+    lines!(ax, T, K.(T), label="SiCl₄ + 2H₂ --> Si_dep + 4HCl")
+    lines!(ax, T, K2.(T), label="2HCl --> SiCl₂ + H₂ + Si_etch")
 
     fig[1,2] = Legend(fig, ax)
 
-    local ax = Axis(fig[2,1],
-                ylabel = "Equilibrium Rate Constant [∅]",
-                xlabel = "Temperature [K]")
+    local ax = Axis(
+		fig[2,1],
+		ylabel="Equilibrium Rate Constant [∅]",
+		xlabel="Temperature [K]"
+	)
 
-    lines!(ax, T, kKp.(T), label = "SiCl₄ --> 2SiCl₂ + Si_etch")
+    lines!(ax, T, kKp.(T), label="SiCl₄ --> 2SiCl₂ + Si_etch")
 
     fig[2,2] = Legend(fig, ax)
     
     fig
-
 end
 
 # ╔═╡ df6821d6-9c47-4d12-a62f-1b458c5ac6ba
@@ -391,37 +376,30 @@ md"
 
 # ╔═╡ ef49613a-22c3-4775-b903-665544c77bdf
 begin
-
     local fig = Figure()
-    local ax = Axis(fig[1,1],
-                title = "Growth Rate versus SiCl₄ Mole Fraction",
-                ylabel = "Film Growth Rate [μm/min]",
-                xlabel = "Mole Fraction of SiCl₄")
+    local ax = Axis(
+		fig[1,1],
+		title="Growth Rate versus SiCl₄ Mole Fraction",
+		ylabel="Film Growth Rate [μm/min]",
+		xlabel="Mole Fraction of SiCl₄",
+		xreversed=true
+	)
 
     gaseous_species = Symbol.(["SiCl₄(t)","H₂(t)","HCl(t)","SiCl₂(t)"])
 
-     
-
     all_gases = map(r -> sum([r[x] for x in gaseous_species]), eachrow(sol))
-    
+	
     y_SiCl₄ = sol[:, gaseous_species[1]] ./ all_gases
 
     lines!(ax, y_SiCl₄[1:end-1], dδ .* 60)
 
     local idx = argmin(abs.(dδ))
-    
-    ax.xreversed = true
 
     if ! isnothing(idx)
-        
         vlines!(ax, y_SiCl₄[idx], linestyle = :dash, color = (:red,0.5))
-
     end
     
     fig
-
-    
-
 end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
@@ -447,7 +425,7 @@ PlutoUI = "~0.7.35"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.7.1"
+julia_version = "1.7.0"
 manifest_format = "2.0"
 
 [[deps.AbstractAlgebra]]
@@ -539,9 +517,9 @@ version = "0.16.11"
 
 [[deps.BangBang]]
 deps = ["Compat", "ConstructionBase", "Future", "InitialValues", "LinearAlgebra", "Requires", "Setfield", "Tables", "ZygoteRules"]
-git-tree-sha1 = "d648adb5e01b77358511fb95ea2e4d384109fac9"
+git-tree-sha1 = "b15a6bc52594f5e4a3b825858d1089618871bf9d"
 uuid = "198e06fe-97b7-11e9-32a5-e1d131e6ad66"
-version = "0.3.35"
+version = "0.3.36"
 
 [[deps.Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
@@ -623,9 +601,9 @@ version = "10.6.0"
 
 [[deps.ChainRulesCore]]
 deps = ["Compat", "LinearAlgebra", "SparseArrays"]
-git-tree-sha1 = "32ad4ece064a61855a35bdc34e3da0b495e01169"
+git-tree-sha1 = "c9a6160317d1abe9c44b3beb367fd448117679ca"
 uuid = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
-version = "1.12.2"
+version = "1.13.0"
 
 [[deps.ChangesOfVariables]]
 deps = ["ChainRulesCore", "LinearAlgebra", "Test"]
@@ -863,9 +841,9 @@ version = "0.6.6"
 
 [[deps.DynamicPolynomials]]
 deps = ["DataStructures", "Future", "LinearAlgebra", "MultivariatePolynomials", "MutableArithmetics", "Pkg", "Reexport", "Test"]
-git-tree-sha1 = "74e63cbb0fda19eb0e69fbe622447f1100cd8690"
+git-tree-sha1 = "7eb5d99577e478d23b1ba1faa9f8f6980d34d0a3"
 uuid = "7c1d4256-1411-5781-91ec-d7bc3513ac07"
-version = "0.4.3"
+version = "0.4.4"
 
 [[deps.EarCut_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -910,9 +888,9 @@ version = "4.4.0+0"
 
 [[deps.FFTW]]
 deps = ["AbstractFFTs", "FFTW_jll", "LinearAlgebra", "MKL_jll", "Preferences", "Reexport"]
-git-tree-sha1 = "463cb335fa22c4ebacfd1faba5fde14edb80d96c"
+git-tree-sha1 = "505876577b5481e50d089c1c68899dfb6faebc62"
 uuid = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
-version = "1.4.5"
+version = "1.4.6"
 
 [[deps.FFTW_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1044,9 +1022,9 @@ version = "1.6.0"
 
 [[deps.GridLayoutBase]]
 deps = ["GeometryBasics", "InteractiveUtils", "Observables"]
-git-tree-sha1 = "70938436e2720e6cb8a7f2ca9f1bbdbf40d7f5d0"
+git-tree-sha1 = "169c3dc5acae08835a573a8a3e25c62f689f8b5c"
 uuid = "3955a311-db13-416c-9275-1d80ed98e5e9"
-version = "0.6.4"
+version = "0.6.5"
 
 [[deps.Grisu]]
 git-tree-sha1 = "53bb909d1151e57e2484c3d1b53e19552b887fb2"
@@ -1277,9 +1255,9 @@ version = "1.3.0"
 
 [[deps.LabelledArrays]]
 deps = ["ArrayInterface", "ChainRulesCore", "LinearAlgebra", "MacroTools", "StaticArrays"]
-git-tree-sha1 = "3696fdc1d3ef6e4d19551c92626066702a5db91c"
+git-tree-sha1 = "3e6a4c07ea78db18f885e474c7de466ce257de85"
 uuid = "2ee39098-c373-598a-b85f-a56591580800"
-version = "1.7.1"
+version = "1.7.3"
 
 [[deps.Latexify]]
 deps = ["Formatting", "InteractiveUtils", "LaTeXStrings", "MacroTools", "Markdown", "Printf", "Requires"]
@@ -1364,9 +1342,9 @@ uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
 [[deps.LinearSolve]]
 deps = ["ArrayInterface", "DocStringExtensions", "IterativeSolvers", "KLU", "Krylov", "KrylovKit", "LinearAlgebra", "RecursiveFactorization", "Reexport", "Requires", "SciMLBase", "Setfield", "SparseArrays", "SuiteSparse", "UnPack"]
-git-tree-sha1 = "55e98c887e31f5c7a1901328e3f8ccd806024f45"
+git-tree-sha1 = "f27bb8e4eabdb93ed3703c55025b111e045ffe81"
 uuid = "7ed4a6bd-45f5-4d41-b270-4a48e9bafcae"
-version = "1.11.3"
+version = "1.12.0"
 
 [[deps.LogExpFunctions]]
 deps = ["ChainRulesCore", "ChangesOfVariables", "DocStringExtensions", "InverseFunctions", "IrrationalConstants", "LinearAlgebra"]
@@ -1385,9 +1363,9 @@ version = "0.12.102"
 
 [[deps.MKL_jll]]
 deps = ["Artifacts", "IntelOpenMP_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "Pkg"]
-git-tree-sha1 = "5455aef09b40e5020e1520f551fa3135040d4ed0"
+git-tree-sha1 = "e595b205efd49508358f7dc670a940c790204629"
 uuid = "856f044c-d86e-5d09-b602-aeab76dc8ba7"
-version = "2021.1.1+2"
+version = "2022.0.0+0"
 
 [[deps.MacroTools]]
 deps = ["Markdown", "Random"]
@@ -1479,15 +1457,15 @@ version = "0.2.2"
 
 [[deps.MultivariatePolynomials]]
 deps = ["DataStructures", "LinearAlgebra", "MutableArithmetics"]
-git-tree-sha1 = "fa6ce8c91445e7cd54de662064090b14b1089a6d"
+git-tree-sha1 = "81b44a8cba10ff3cfb564da784bf92e5f834da0e"
 uuid = "102ac46a-7ee4-5c85-9060-abc95bfdeaa3"
-version = "0.4.2"
+version = "0.4.3"
 
 [[deps.MutableArithmetics]]
 deps = ["LinearAlgebra", "SparseArrays", "Test"]
-git-tree-sha1 = "842b5ccd156e432f369b204bb704fd4020e383ac"
+git-tree-sha1 = "ba8c0f8732a24facba709388c74ba99dcbfdda1e"
 uuid = "d8a4904e-b15c-11e9-3269-09a3773c0cb0"
-version = "0.3.3"
+version = "1.0.0"
 
 [[deps.NLSolversBase]]
 deps = ["DiffResults", "Distributed", "FiniteDiff", "ForwardDiff"]
@@ -1572,9 +1550,9 @@ version = "0.5.5+0"
 
 [[deps.Optim]]
 deps = ["Compat", "FillArrays", "ForwardDiff", "LineSearches", "LinearAlgebra", "NLSolversBase", "NaNMath", "Parameters", "PositiveFactorizations", "Printf", "SparseArrays", "StatsBase"]
-git-tree-sha1 = "045d10789f5daff18deb454d5923c6996017c2f3"
+git-tree-sha1 = "bc0a748740e8bc5eeb9ea6031e6f050de1fc0ba2"
 uuid = "429524aa-4258-5aef-a3af-852621145aeb"
-version = "1.6.1"
+version = "1.6.2"
 
 [[deps.Opus_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1601,9 +1579,9 @@ version = "8.44.0+0"
 
 [[deps.PDMats]]
 deps = ["LinearAlgebra", "SparseArrays", "SuiteSparse"]
-git-tree-sha1 = "ee26b350276c51697c9c2d88a072b339f9f03d73"
+git-tree-sha1 = "7e2166042d1698b6072352c74cfd1fca2a968253"
 uuid = "90014a1f-27ba-587c-ab20-58faa44d9150"
-version = "0.11.5"
+version = "0.11.6"
 
 [[deps.PNGFiles]]
 deps = ["Base64", "CEnum", "ImageCore", "IndirectArrays", "OffsetArrays", "libpng_jll"]
@@ -1712,9 +1690,9 @@ version = "0.2.3"
 
 [[deps.Preferences]]
 deps = ["TOML"]
-git-tree-sha1 = "2cf929d64681236a2e074ffafb8d568733d2e6af"
+git-tree-sha1 = "de893592a221142f3db370f48290e3a2ef39998f"
 uuid = "21216c6a-2e73-6563-6e65-726566657250"
-version = "1.2.3"
+version = "1.2.4"
 
 [[deps.PrettyTables]]
 deps = ["Crayons", "Formatting", "Markdown", "Reexport", "Tables"]
@@ -1947,9 +1925,9 @@ version = "1.20.2"
 
 [[deps.SpecialFunctions]]
 deps = ["ChainRulesCore", "IrrationalConstants", "LogExpFunctions", "OpenLibm_jll", "OpenSpecFun_jll"]
-git-tree-sha1 = "85e5b185ed647b8ee89aa25a7788a2b43aa8a74f"
+git-tree-sha1 = "5ba658aeecaaf96923dce0da9e703bd1fe7666f9"
 uuid = "276daf66-3868-5448-9aa4-cd146d93841b"
-version = "2.1.3"
+version = "2.1.4"
 
 [[deps.SplittablesBase]]
 deps = ["Setfield", "Test"]
@@ -1971,9 +1949,9 @@ version = "0.4.1"
 
 [[deps.StaticArrays]]
 deps = ["LinearAlgebra", "Random", "Statistics"]
-git-tree-sha1 = "6354dfaf95d398a1a70e0b28238321d5d17b2530"
+git-tree-sha1 = "74fb527333e72ada2dd9ef77d98e4991fb185f04"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "1.4.0"
+version = "1.4.1"
 
 [[deps.Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
@@ -2137,9 +2115,9 @@ version = "0.3.0"
 
 [[deps.TriangularSolve]]
 deps = ["CloseOpenIntervals", "IfElse", "LayoutPointers", "LinearAlgebra", "LoopVectorization", "Polyester", "Static", "VectorizationBase"]
-git-tree-sha1 = "c3ab8b77b82fd92e2b6eea8a275a794d5a6e4011"
+git-tree-sha1 = "5cbc1a4551fcf8afe8f80bb4f1f13e3271ee2656"
 uuid = "d5829a12-d9aa-46ab-831f-fb7c9ab06edf"
-version = "0.1.9"
+version = "0.1.10"
 
 [[deps.URIs]]
 git-tree-sha1 = "97bbe755a53fe859669cd907f2d96aee8d2c1355"
@@ -2259,10 +2237,10 @@ uuid = "700de1a5-db45-46bc-99cf-38207098b444"
 version = "0.2.2"
 
 [[deps.isoband_jll]]
-deps = ["Libdl", "Pkg"]
-git-tree-sha1 = "a1ac99674715995a536bbce674b068ec1b7d893d"
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "51b5eeb3f98367157a7a12a1fb0aa5328946c03c"
 uuid = "9a68df92-36a6-505f-a73e-abb412b6bfb4"
-version = "0.2.2+0"
+version = "0.2.3+0"
 
 [[deps.libass_jll]]
 deps = ["Artifacts", "Bzip2_jll", "FreeType2_jll", "FriBidi_jll", "HarfBuzz_jll", "JLLWrappers", "Libdl", "Pkg", "Zlib_jll"]
@@ -2338,11 +2316,6 @@ version = "3.5.0+0"
 # ╟─b9e889d9-5edb-498e-b560-fd699fe2de73
 # ╟─35d612fb-b859-42b1-9ea2-ae90ad01dfb8
 # ╠═abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
-# ╟─fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
-# ╠═ed427b2f-2fa9-4659-9ad4-7d0c606721b2
-# ╟─3abf7000-0683-4238-9e89-57606aba09b6
-# ╠═4f95bf04-8f75-4ad4-9a2a-4c62be7b05c7
-# ╠═23d028df-dbd7-4188-ae74-7da3c071e549
 # ╠═fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
 # ╟─ed427b2f-2fa9-4659-9ad4-7d0c606721b2
 # ╟─23d028df-dbd7-4188-ae74-7da3c071e549
@@ -2352,8 +2325,6 @@ version = "3.5.0+0"
 # ╠═96528e86-2a83-4b59-a412-de66b4475d52
 # ╟─084b9228-5deb-4cef-bf6b-d962ca884dbe
 # ╠═4e829cbd-3d8c-4ef6-8898-1af9443f01ac
-# ╠═c4281e1c-1403-43bc-87ee-320836e2035d
-# ╠═876c2820-c98a-4689-a07e-72ea0d4749c0
 # ╟─df6821d6-9c47-4d12-a62f-1b458c5ac6ba
 # ╠═ef49613a-22c3-4775-b903-665544c77bdf
 # ╟─00000000-0000-0000-0000-000000000001
