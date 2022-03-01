@@ -88,7 +88,7 @@ deposition = @reaction_network begin
     K2(T), 2HCl --> SiCl₂ + H₂ + Si_etch # Si etching by HCl
     kKp(T), SiCl₄ --> 2SiCl₂ + Si_etch # Si etching by SiCl₄
     k, 2SiCl₂ --> SiCl₄ + Si_dep 
-end 
+end
 
 # ╔═╡ b7222499-de8e-452f-ab52-e1a443109147
 md"""
@@ -97,7 +97,7 @@ md"""
 
 # ╔═╡ 245ddab0-9991-465c-9074-0d02392950c1
 # Define our simulation time step, which is also to be used in calculating the derivative of the film thickness as a function of time
-Δt = 0.05
+Δt = 0.05;
 
 # ╔═╡ b9e889d9-5edb-498e-b560-fd699fe2de73
 md"""
@@ -125,7 +125,6 @@ function film_thickness(Si_dep, Si_etch;
     dep_vol  = dep_mass / ρ # net volume deposited Si (cm³)
     δ        = dep_vol / (π * d^2 / 4) * 1e4 # film thickness (μm)
     return δ 
-    # >= 0 ? δ : NaN
 end;
 
 # ╔═╡ 57abbd90-8670-4117-ae4c-dce562abe162
@@ -156,25 +155,6 @@ end;
 # ╔═╡ 05db1f52-1c87-465f-8b1b-25e45aed6d0b
 # view the system of equations
 odesys
-
-# ╔═╡ d5bad535-7150-40a9-b319-0c86617264e1
-begin
-    # test the mole balance w/ the deposition/etching tracking scheme
-    a = sol[1, "SiCl₄(t)"]
-    b = sol[end, "SiCl₄(t)"] + sol[end, "SiCl₂(t)"] + 
-        sol[end, "Si_dep(t)"] - sol[end, "Si_etch(t)"]
-
-    # Si_net must be within small margin of diff. btwn. initial and final Si amts.
-    @assert isapprox(a, b)
-end;
-
-# ╔═╡ eba36605-ea73-4e2a-8cfc-cf3d9533cdc6
-#= 
-Initial H₂ Pressure: $(@bind p_H₂⁰ PlutoUI.Slider(1:1:760, default=760, show_value = true)) mmHg
-
-Initial SiCl₄ Pressure: $(@bind p_SiCl₄⁰ PlutoUI.Slider(1:1:760, default=760, show_value = true)) mmHg
-
-=#
 
 # ╔═╡ 35d612fb-b859-42b1-9ea2-ae90ad01dfb8
 md"""
@@ -288,7 +268,7 @@ md"Temperature Range: $(@bind temp_span PlutoUI.RangeSlider(900:50:1400)) K"
 # ╔═╡ 96528e86-2a83-4b59-a412-de66b4475d52
 begin
     local fig = Figure()
-    local ax = Axis(
+    Axis(
         fig[1,1],
         title="Parametric Study of Temperature on Film Thickness",
         xlabel="Time [s]",
@@ -297,51 +277,9 @@ begin
 
     local max_δ = zeros(length(temp_span))
     
-    for (i,temp) in enumerate(temp_span)
+    for (i, temp) in enumerate(temp_span)
         # initial values    
         local u₀ = [
-            :SiCl₄   => p_SiCl₄⁰ / 62.4 / temp,
-            :H₂      => p_H₂⁰ / 62.4 / temp,
-            :Si_dep  => 0.0,
-            :Si_etch => 0.0,
-            :HCl     => 0.0, 
-            :SiCl₂   => 0.0,
-            :k       => k,
-            :T       => temp
-        ]
-    
-        # time interval of simulations
-        local timespan = (0.0, t_max)
-    
-        # define the ODEs and solve
-        local prob = ODEProblem(deposition, u₀, timespan)
-        local sol = DataFrame(solve(prob, Tsit5(), saveat=0.05, maxiters=1e8))
-        local δ = film_thickness.(sol[:, "Si_dep(t)"], sol[:, "Si_etch(t)"])
-
-        non_negative = δ .> 0.0 # find all values in δ that aren't NaN
-        max_δ[i] = maximum(δ[non_negative]) # use not_NaN as a mask
-
-        lines!(
-            sol[non_negative, :timestamp], δ[non_negative], 
-            color=ColorSchemes.viridis[20*i]
-        )
-
-    end
-
-    Colorbar(fig[1,2], limits = (temp_span[1], temp_span[end]), colormap=:viridis)
-
-    local ax2 = Axis(
-        fig[2,1],
-        xlabel="Temperature [K]",
-        ylabel="Maximum δ [μm]"
-    )
-
-    max_δ = zeros(length(temp_span))
-    
-    for (i,temp) in enumerate(temp_span)
-        
-        # initial values    
-        u₀ = [
             :SiCl₄   => (y_SiCl₄ * Psys) / 62.4 / temp,
             :H₂      => Psys * (1 - y_SiCl₄) / 62.4 / temp,
             :Si_dep  => 0.0,
@@ -352,40 +290,41 @@ begin
             :T       => temp
         ]
     
-        # time interval of simulation
-        timespan = (0.0, t_max)
-    
         # define the ODEs and solve
-        prob = ODEProblem(deposition, u₀, timespan)
-        sol = DataFrame(solve(prob, Tsit5(), saveat=0.05, maxiters=1e8))
+        local prob = ODEProblem(deposition, u₀, timespan)
+        local sol = DataFrame(solve(prob, Tsit5(), saveat=0.05, maxiters=1e8))
         local δ = film_thickness.(sol[:, "Si_dep(t)"], sol[:, "Si_etch(t)"])
 
-        non_negative = δ .>= 0.0 # find all values in δ that are > 0
-        max_δ[i] = maximum(δ[non_negative]) # use non_negative as a mask
+        non_negative = δ .> 0.0 # find all values in δ that aren't NaN
+		if length(δ[non_negative]) > 0
+	        max_δ[i] = maximum(δ[non_negative]) # use not_NaN as a mask
+		end
 
-    
-        lines!(sol[non_negative, :timestamp], δ[non_negative], 
-                label = "T = $temp [K]", 
-                color = ColorSchemes.viridis[20*i])
-
+        lines!(
+            sol[non_negative, :timestamp], 
+			δ[non_negative], 
+            color=ColorSchemes.viridis[round(Int, 256 * i / length(temp_span))]
+        )
     end
 
-    Colorbar(fig[1,2], limits = (temp_span[1], temp_span[end]), colormap=:viridis)
+    Colorbar(
+		fig[1,2], 
+		limits=(temp_span[1], temp_span[end]), 
+		colormap=:viridis,
+		label="Reactor Temperature [K]"
+	)
 
-    local ax2 = Axis(fig[2,1],
-        title ="",
-        xlabel = "Temperature [K]",
-        ylabel = "Maximum δ [μm]")
+    local ax2=Axis(
+		fig[2,:],
+        title="",
+        xlabel="Temperature [K]",
+        ylabel="Maximum δ [μm]"
+	)
 
     scatter!(ax2, temp_span, max_δ)
 
-    # ylims!(floor(minimum(max_δ)), ceil(maximum(max_δ)))
     fig
-
 end
-
-# ╔═╡ 4a1f107c-6d2b-4567-9dce-fb1f406c8c6c
-maximum(δ[δ .> 0.0])
 
 # ╔═╡ 084b9228-5deb-4cef-bf6b-d962ca884dbe
 md"
@@ -431,19 +370,14 @@ md"
 begin
     local fig = Figure()
     local ax = Axis(
-        fig[1,1],
-        title="Growth Rate versus SiCl₄ Mole Fraction",
-        ylabel="Film Growth Rate [μm/min]",
-        xlabel="Mole Fraction of SiCl₄",
-        xreversed=true
-    )
+		fig[1,1],
+		title="Growth Rate versus SiCl₄ Mole Fraction, T = $temperature [K]",
+		ylabel="Film Growth Rate [μm/min]",
+		xlabel="Mole Fraction of SiCl₄",
+		xreversed=true
+	)
 
-    local fig = Figure()
-    local ax = Axis(fig[1,1],
-                title = "Growth Rate versus SiCl₄ Mole Fraction, T = $temperature [K]",
-                ylabel = "Film Growth Rate [μm/min]",
-                xlabel = "Mole Fraction of SiCl₄")
-
+	gaseous_species = Symbol.(["SiCl₄(t)", "SiCl₂(t)", "H₂(t)", "HCl(t)"])
     all_gases = map(r -> sum([r[x] for x in gaseous_species]), eachrow(sol))
     
     molfrac_SiCl4 = sol[:, gaseous_species[1]] ./ all_gases
@@ -451,19 +385,6 @@ begin
     lines!(ax, molfrac_SiCl4[1:end-1], dδ .* 60)
 
     local idx = findfirst(dδ .< 0)
-    
-    ax.xreversed = true
-
-    if ! isnothing(idx)
-        
-        vlines!(ax, molfrac_SiCl4[idx], linestyle = :dash, color = (:red,0.5))
-
-    end
-    
-    fig
-
-    
-
     if ! isnothing(idx)
         vlines!(ax, y_SiCl₄[idx], linestyle = :dash, color = (:red,0.5))
     end
@@ -2376,29 +2297,24 @@ version = "3.5.0+0"
 # ╠═c986672c-e787-41fc-9a25-63f498f24d4b
 # ╟─d7f3703a-dee2-46ce-a052-92d44938c965
 # ╠═1b12f164-be6e-444c-bba8-c27b1cccb730
-# ╠═05db1f52-1c87-465f-8b1b-25e45aed6d0b
+# ╟─05db1f52-1c87-465f-8b1b-25e45aed6d0b
 # ╟─b7222499-de8e-452f-ab52-e1a443109147
 # ╠═245ddab0-9991-465c-9074-0d02392950c1
 # ╠═a2469790-8df5-4c89-b683-6b140004a928
 # ╠═57abbd90-8670-4117-ae4c-dce562abe162
-# ╠═d5bad535-7150-40a9-b319-0c86617264e1
-# ╠═b9e889d9-5edb-498e-b560-fd699fe2de73
-# ╠═eba36605-ea73-4e2a-8cfc-cf3d9533cdc6
+# ╟─b9e889d9-5edb-498e-b560-fd699fe2de73
 # ╟─35d612fb-b859-42b1-9ea2-ae90ad01dfb8
 # ╟─abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
-# ╠═fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
-# ╠═abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
-# ╠═fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
+# ╟─fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
 # ╟─ed427b2f-2fa9-4659-9ad4-7d0c606721b2
 # ╟─23d028df-dbd7-4188-ae74-7da3c071e549
 # ╟─e702092a-0b2e-475e-8dc1-51308be65c64
 # ╟─7b58b65f-a35a-461e-a4b6-4cb16646642e
 # ╟─a347066c-c48e-42e9-a051-ac530d9bb7eb
-# ╠═96528e86-2a83-4b59-a412-de66b4475d52
-# ╠═4a1f107c-6d2b-4567-9dce-fb1f406c8c6c
+# ╟─96528e86-2a83-4b59-a412-de66b4475d52
 # ╟─084b9228-5deb-4cef-bf6b-d962ca884dbe
-# ╠═4e829cbd-3d8c-4ef6-8898-1af9443f01ac
+# ╟─4e829cbd-3d8c-4ef6-8898-1af9443f01ac
 # ╟─df6821d6-9c47-4d12-a62f-1b458c5ac6ba
-# ╠═ef49613a-22c3-4775-b903-665544c77bdf
+# ╟─ef49613a-22c3-4775-b903-665544c77bdf
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
