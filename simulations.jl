@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.7
+# v0.18.1
 
 using Markdown
 using InteractiveUtils
@@ -16,10 +16,10 @@ end
 
 # ╔═╡ 7e17fa70-86c6-11ec-1a61-41e7e9a383ec
 begin
-	# simulation/solver packages
-	using Catalyst, DifferentialEquations
-	# notebook utilities
-	using CairoMakie, DataFrames, PlutoUI, ColorSchemes
+    # simulation/solver packages
+    using Catalyst, DifferentialEquations
+    # notebook utilities
+    using CairoMakie, ColorSchemes, DataFrames, PlutoUI
 end
 
 # ╔═╡ 2ec89215-0634-498c-94ee-389b9b8d7034
@@ -44,12 +44,12 @@ begin
     const Ea1 = 10.620 # kcal/mol
     const Ea2 = 17.490 # kcal/mol
     const Ea3 = 21.721 # kcal/mol
-	
+    
     const R = 1.985e-3 # kcal/mol-K
 
     const k = 1 # random parameter for using Kp
 
-    const ρ_Si  = 2.33 # g/cm³
+    const ρ_Si  = 2.33   # g/cm³
     const MW_Si = 28.086 # g/mol
 end;
 
@@ -61,11 +61,11 @@ md"""
 # ╔═╡ bdee4229-9e84-4bdd-a836-985a2f4b96b0
 begin
     # define the equilibrium constant expressions
-    K(T)   = K0  * exp(-E   / (R * T))
-    K1(T)  = K10 * exp(-Ea1 / (R * T)) # [cm³]
-    K2(T)  = K20 * exp(-Ea2 / (R * T))
-    K3(T)  = K30 * exp(-Ea3 / (R * T)) # units = 
-    kKp(T) = k * 10^(10.38 - 16770 / T) 
+    K(T)   = K0  * exp(-E   / (R * T)) # [cm/s]
+    # K1(T)  = K10 * exp(-Ea1 / (R * T)) # [cm³]
+    K2(T)  = K20 * exp(-Ea2 / (R * T)) # [cm/s]
+    K3(T)  = K30 * exp(-Ea3 / (R * T)) # [cm/s]
+    kKp(T) = k * 10^(10.38 - 16770 / T) # [∅]
 end;
 
 # ╔═╡ c986672c-e787-41fc-9a25-63f498f24d4b
@@ -85,31 +85,35 @@ md"""
 # ╔═╡ 1b12f164-be6e-444c-bba8-c27b1cccb730
 deposition = @reaction_network begin
     K(T), SiCl₄ + 2H₂ --> Si_dep + 4HCl
-    K2(T), 2HCl --> SiCl₂ + H₂ + Si_etch
-    kKp(T), SiCl₄ --> 2SiCl₂ + Si_etch
+    K2(T), 2HCl --> SiCl₂ + H₂ + Si_etch # Si etching by HCl
+    kKp(T), SiCl₄ --> 2SiCl₂ + Si_etch # Si etching by SiCl₄
     k, 2SiCl₂ --> SiCl₄ + Si_dep 
-end 
+end
 
 # ╔═╡ b7222499-de8e-452f-ab52-e1a443109147
 md"""
 ## Simulation
 """
 
+# ╔═╡ 245ddab0-9991-465c-9074-0d02392950c1
+# Define our simulation time step, which is also to be used in calculating the derivative of the film thickness as a function of time
+Δt = 0.05;
+
 # ╔═╡ b9e889d9-5edb-498e-b560-fd699fe2de73
 md"""
 ## Physical System
 
-Reactor Volume: $(@bind reactor_volume PlutoUI.NumberField(10:0.1:2500., default=100.)) L
+Reactor Volume: $(@bind reactor_volume PlutoUI.Slider(10:0.1:2500., default=100., show_value = true)) L
 
-Wafer Diameter: $(@bind wafer_diameter PlutoUI.NumberField(10:45, default=30)) cm
+Wafer Diameter: $(@bind wafer_diameter PlutoUI.Slider(10:45, default=30, show_value = true)) cm
 
-Temperature: $(@bind temperature PlutoUI.NumberField(950:1250, default=1000)) K
+Temperature: $(@bind temperature PlutoUI.Slider(950:1450, default=1000, show_value = true)) K
 
-Initial SiCl₄ Pressure: $(@bind p_SiCl₄⁰ PlutoUI.NumberField(1:1:760, default=760)) mmHg
+Mole Fraction of SiCl₄: $(@bind y_SiCl₄ PlutoUI.Slider(0:0.05:1, default=0.5, show_value = true)) 
 
-Initial H₂ Pressure: $(@bind p_H₂⁰ PlutoUI.NumberField(1:1:760, default=760)) mmHg
+Total System Pressure: $(@bind Psys PlutoUI.Slider(1:1:760, default=760, show_value = true)) mmHg
 
-Maximum Run Time: $(@bind t_max PlutoUI.NumberField(60:60:7200, default=3600)) s
+Maximum Run Time: $(@bind t_max PlutoUI.Slider(60:60:7200, default=3600, show_value = true)) s
 """
 
 # ╔═╡ a2469790-8df5-4c89-b683-6b140004a928
@@ -120,18 +124,17 @@ function film_thickness(Si_dep, Si_etch;
     dep_mass = net_mol * MW # net mass deposited Si (g)
     dep_vol  = dep_mass / ρ # net volume deposited Si (cm³)
     δ        = dep_vol / (π * d^2 / 4) * 1e4 # film thickness (μm)
-    return δ > 0 ? δ : NaN
+    return δ 
 end;
 
 # ╔═╡ 57abbd90-8670-4117-ae4c-dce562abe162
 begin
     odesys = convert(ODESystem, deposition, combinatoric_ratelaws=false)
-    # combinatoric_ratelaws = false makes it so that the rate laws are elementary with regard to stoichiometry, and coefficients aren't based on factorials
 
     # initial values
-    u₀ = [
-        :SiCl₄   => p_SiCl₄⁰ / 62.4 / temperature, # n/V = P/R/T
-        :H₂      => p_H₂⁰    / 62.4 / temperature,
+    local u₀ = [
+        :SiCl₄   => (y_SiCl₄ * Psys) / 62.4 / temperature,
+        :H₂      => Psys * (1 - y_SiCl₄) / 62.4 / temperature,
         :Si_dep  => 0.0,
         :Si_etch => 0.0,
         :HCl     => 0.0, 
@@ -145,24 +148,13 @@ begin
 
     # define the ODEs and solve
     prob = ODEProblem(deposition, u₀, timespan)
-    sol = DataFrame(solve(prob, Tsit5(), saveat=0.05, maxiters=1e8))
-	δ = film_thickness.(sol[:, "Si_dep(t)"], sol[:, "Si_etch(t)"])
+    sol = DataFrame(solve(prob, Tsit5(), saveat=Δt, maxiters=1e8))
+    δ = film_thickness.(sol[:, "Si_dep(t)"], sol[:, "Si_etch(t)"])
 end;
 
 # ╔═╡ 05db1f52-1c87-465f-8b1b-25e45aed6d0b
 # view the system of equations
 odesys
-
-# ╔═╡ d5bad535-7150-40a9-b319-0c86617264e1
-begin
-    # test the mole balance w/ the deposition/etching tracking scheme
-    a = sol[1, "SiCl₄(t)"]
-    b = sol[end, "SiCl₄(t)"] + sol[end, "SiCl₂(t)"] + 
-		sol[end, "Si_dep(t)"] - sol[end, "Si_etch(t)"]
-
-    # Si_net must be within small margin of diff. btwn. initial and final Si amts.
-    @assert isapprox(a, b)
-end;
 
 # ╔═╡ 35d612fb-b859-42b1-9ea2-ae90ad01dfb8
 md"""
@@ -171,8 +163,9 @@ md"""
 
 # ╔═╡ abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
 begin
-	max_idx = argmax(δ)
-	
+    max_idx = argmax([isnan(d) ? 0 : d for d in δ])
+
+    
 md"""
 **Maximum Film Thickness**: $(round(δ[max_idx], digits=2)) μm
 
@@ -182,106 +175,221 @@ end
 
 # ╔═╡ fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
 begin
-	
-	local fig = Figure()
     
-	local ax = Axis(
-		fig[1,1],
+    local fig = Figure()
+    
+    local ax = Axis(
+        fig[1,1],
         title = "Gas-Phase Species",
         ylabel="Concentration [mmol/L]",
         xlabel="Time [s]"
-	)
+    )
 
-	plotted_species = setdiff(
-		String.(Symbol.(species(deposition))),
-		["T(t)", "k(t)", "Si_dep(t)", "Si_etch(t)"]
-	)
-	
+    plotted_species = setdiff(
+        String.(Symbol.(species(deposition))),
+        ["T(t)", "k(t)", "Si_dep(t)", "Si_etch(t)"]
+    )
+    
     for name in plotted_species
-        lines!(sol[:, :timestamp], 1000 .* sol[:, name], label=chop(name, tail=3))
+        lines!(sol[:, :timestamp], 1000 .* sol[:, name], label=chop(name, tail=3)) #mol/L --> mmol/L
     end
 
-	fig[1,2] = Legend(fig, ax)
+    fig[1,2] = Legend(fig, ax)
 
 
     Axis(
         fig[2,1],
-        title="Si Film Growth on a $wafer_diameter cm Wafer",
+        title="Si Film Growth on a $wafer_diameter cm Wafer, T = $temperature [K]",
         xlabel="Time [s]",
         ylabel="δ [μm]"
     )
-	
+    
     lines!(sol[:, :timestamp], δ)
 
     fig
 end
 
-# ╔═╡ dcb60e56-3ddc-4463-aa64-2e462df82910
-# To-do: 
-# 1) Fit an expression to δ data to take derivative (film growth rate over time)
-# 2) Find the point at which we switch from growth to etching
-# 3) Parametric study of temperature on film thickness
-# 4) Comparison of rate constants at different temperatures to see dominant reactions
+# ╔═╡ ed427b2f-2fa9-4659-9ad4-7d0c606721b2
+function estimate_derivative!(x::Vector)
 
-# ╔═╡ 3b303ac4-42ee-4ab3-8893-d60035a2d4be
+    dδ = zeros(length(x))
+    
+    for i = 2:length(x)
+
+        dδ[i-1] = (x[i] - x[i-1]) ./ Δt 
+        
+    end
+    
+    return dδ[1:end-1]
+end
+
+# ╔═╡ e702092a-0b2e-475e-8dc1-51308be65c64
+begin
+
+    dδ = estimate_derivative!(δ)
+    idx = findfirst(dδ .<= 0.0) # find the position in the derivative where dδ = 0, if it exists
+    
+    local fig = Figure()
+    local ax = Axis(fig[1,1],
+            title = "Si Film Growth Rate over Time",
+            ylabel = "δ Growth Rate [μm/s]",
+            xlabel = "Time [s]")
+
+    lines!(ax, sol[1:end-1, :timestamp], dδ)
+            # sloppy solution to selectively plotting
+    
+    if ! isnothing(idx)
+        
+        vlines!(ax, sol[idx, :timestamp], linestyle = :dash, color = (:red,0.5))
+
+    end
+    
+    fig
+
+end
+
+# ╔═╡ 23d028df-dbd7-4188-ae74-7da3c071e549
+if ! isnothing(idx)
+    
+md"""
+**Switched from Deposition to Etching at**: $(round(sol[idx, :timestamp], digits=2)) s
+"""
+
+end
+
+# ╔═╡ 7b58b65f-a35a-461e-a4b6-4cb16646642e
+md"
+## Parametric Study #1: 
+### Influence of Temperature on Film Thickness"
+
+# ╔═╡ a347066c-c48e-42e9-a051-ac530d9bb7eb
 md"Temperature Range: $(@bind temp_span PlutoUI.RangeSlider(900:50:1400)) K"
 
 # ╔═╡ 96528e86-2a83-4b59-a412-de66b4475d52
 begin
-
-	local fig = Figure()
-
-	local ax = Axis(
-		fig[1,1],
-		title="Parametric Study of Temperature on Film Thickness",
+    local fig = Figure()
+    Axis(
+        fig[1,1],
+        title="Parametric Study of Temperature on Film Thickness",
         xlabel="Time [s]",
         ylabel="δ [μm]"
+    )
+
+    local max_δ = zeros(length(temp_span))
+    
+    for (i, temp) in enumerate(temp_span)
+        # initial values    
+        local u₀ = [
+            :SiCl₄   => (y_SiCl₄ * Psys) / 62.4 / temp,
+            :H₂      => Psys * (1 - y_SiCl₄) / 62.4 / temp,
+            :Si_dep  => 0.0,
+            :Si_etch => 0.0,
+            :HCl     => 0.0, 
+            :SiCl₂   => 0.0,
+            :k       => k,
+            :T       => temp
+        ]
+    
+        # define the ODEs and solve
+        local prob = ODEProblem(deposition, u₀, timespan)
+        local sol = DataFrame(solve(prob, Tsit5(), saveat=0.05, maxiters=1e8))
+        local δ = film_thickness.(sol[:, "Si_dep(t)"], sol[:, "Si_etch(t)"])
+
+        non_negative = δ .> 0.0 # find all values in δ that aren't NaN
+		if length(δ[non_negative]) > 0
+	        max_δ[i] = maximum(δ[non_negative]) # use not_NaN as a mask
+		end
+
+        lines!(
+            sol[non_negative, :timestamp], 
+			δ[non_negative], 
+            color=ColorSchemes.viridis[round(Int, 256 * i / length(temp_span))]
+        )
+    end
+
+    Colorbar(
+		fig[1,2], 
+		limits=(temp_span[1], temp_span[end]), 
+		colormap=:viridis,
+		label="Reactor Temperature [K]"
 	)
 
-	max_δ = zeros(length(temp_span))
-	
-	for (i,temperature) in enumerate(temp_span)
-	    
-		# initial values	
-	    u₀ = [
-	        :SiCl₄   => p_SiCl₄⁰ / 62.4 / temperature,
-	        :H₂      => p_H₂⁰ / 62.4 / temperature,
-	        :Si_dep  => 0.0,
-	        :Si_etch => 0.0,
-	        :HCl     => 0.0, 
-	        :SiCl₂   => 0.0,
-	        :k       => k,
-	        :T       => temperature
-	    ]
-	
-	    # time interval of simulation
-	    timespan = (0.0, t_max)
-	
-	    # define the ODEs and solve
-	    prob = ODEProblem(deposition, u₀, timespan)
-	    sol = DataFrame(solve(prob, Tsit5(), saveat=0.05, maxiters=1e8))
-		δ = film_thickness.(sol[:, "Si_dep(t)"], sol[:, "Si_etch(t)"])
+    local ax2=Axis(
+		fig[2,:],
+        title="",
+        xlabel="Temperature [K]",
+        ylabel="Maximum δ [μm]"
+	)
 
-		not_NaN = isnan.(δ) .== false
-		max_δ[i] = maximum(δ[not_NaN])
-		
-		lines!(sol[:, :timestamp], δ, 
-				label = "T = $temperature [K]", 
-				color = ColorSchemes.viridis[round(Int, 256/length(temp_span))*i])
+    scatter!(ax2, temp_span, max_δ)
 
-	end
+    fig
+end
 
-	fig[1,2] = Legend(fig, ax)
+# ╔═╡ 084b9228-5deb-4cef-bf6b-d962ca884dbe
+md"
+## Parametric Study #2: 
+### Influence of Temperature on Reaction Rates"
 
-	local ax2 = Axis(fig[2,1],
-		title ="",
-		xlabel = "Temperature [K]",
-		ylabel = "Maximum δ [μm]")
+# ╔═╡ 4e829cbd-3d8c-4ef6-8898-1af9443f01ac
+begin
+    local fig = Figure()
+    local ax = Axis(
+        fig[1,1],
+        title="Forward Reaction Rate Constants",
+        ylabel="Rate Constant Value [cm/s]",
+        xlabel="Temperature [K]"
+    )
+    
+    T = collect(range(temp_span[1], step=Δt, temp_span[end]))
+    
+    lines!(ax, T, K.(T), label="SiCl₄ + 2H₂ --> Si_dep + 4HCl")
+    lines!(ax, T, K2.(T), label="2HCl --> SiCl₂ + H₂ + Si_etch")
 
-	scatter!(ax2, temp_span, max_δ)
-	
-	fig
+    fig[1,2] = Legend(fig, ax)
 
+    local ax = Axis(
+        fig[2,1],
+        ylabel="Equilibrium Rate Constant [∅]",
+        xlabel="Temperature [K]"
+    )
+
+    lines!(ax, T, kKp.(T), label="SiCl₄ --> 2SiCl₂ + Si_etch")
+
+    fig[2,2] = Legend(fig, ax)
+    
+    fig
+end
+
+# ╔═╡ df6821d6-9c47-4d12-a62f-1b458c5ac6ba
+md"
+## Parametric Study #3: 
+### Growth Rate as a Function of ``y_{SiCl_4}``"
+
+# ╔═╡ ef49613a-22c3-4775-b903-665544c77bdf
+begin
+    local fig = Figure()
+    local ax = Axis(
+		fig[1,1],
+		title="Growth Rate versus SiCl₄ Mole Fraction, T = $temperature [K]",
+		ylabel="Film Growth Rate [μm/min]",
+		xlabel="Mole Fraction of SiCl₄",
+		xreversed=true
+	)
+
+	gaseous_species = Symbol.(["SiCl₄(t)", "SiCl₂(t)", "H₂(t)", "HCl(t)"])
+    all_gases = map(r -> sum([r[x] for x in gaseous_species]), eachrow(sol))
+    
+    molfrac_SiCl4 = sol[:, gaseous_species[1]] ./ all_gases
+
+    lines!(ax, molfrac_SiCl4[1:end-1], dδ .* 60)
+
+    local idx = findfirst(dδ .< 0)
+    if ! isnothing(idx)
+        vlines!(ax, y_SiCl₄[idx], linestyle = :dash, color = (:red,0.5))
+    end
+    
+    fig
 end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
@@ -307,7 +415,7 @@ PlutoUI = "~0.7.35"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.7.1"
+julia_version = "1.7.0"
 manifest_format = "2.0"
 
 [[deps.AbstractAlgebra]]
@@ -399,9 +507,9 @@ version = "0.16.11"
 
 [[deps.BangBang]]
 deps = ["Compat", "ConstructionBase", "Future", "InitialValues", "LinearAlgebra", "Requires", "Setfield", "Tables", "ZygoteRules"]
-git-tree-sha1 = "d648adb5e01b77358511fb95ea2e4d384109fac9"
+git-tree-sha1 = "b15a6bc52594f5e4a3b825858d1089618871bf9d"
 uuid = "198e06fe-97b7-11e9-32a5-e1d131e6ad66"
-version = "0.3.35"
+version = "0.3.36"
 
 [[deps.Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
@@ -483,9 +591,9 @@ version = "10.6.0"
 
 [[deps.ChainRulesCore]]
 deps = ["Compat", "LinearAlgebra", "SparseArrays"]
-git-tree-sha1 = "32ad4ece064a61855a35bdc34e3da0b495e01169"
+git-tree-sha1 = "c9a6160317d1abe9c44b3beb367fd448117679ca"
 uuid = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
-version = "1.12.2"
+version = "1.13.0"
 
 [[deps.ChangesOfVariables]]
 deps = ["ChainRulesCore", "LinearAlgebra", "Test"]
@@ -723,9 +831,9 @@ version = "0.6.6"
 
 [[deps.DynamicPolynomials]]
 deps = ["DataStructures", "Future", "LinearAlgebra", "MultivariatePolynomials", "MutableArithmetics", "Pkg", "Reexport", "Test"]
-git-tree-sha1 = "74e63cbb0fda19eb0e69fbe622447f1100cd8690"
+git-tree-sha1 = "7eb5d99577e478d23b1ba1faa9f8f6980d34d0a3"
 uuid = "7c1d4256-1411-5781-91ec-d7bc3513ac07"
-version = "0.4.3"
+version = "0.4.4"
 
 [[deps.EarCut_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -770,9 +878,9 @@ version = "4.4.0+0"
 
 [[deps.FFTW]]
 deps = ["AbstractFFTs", "FFTW_jll", "LinearAlgebra", "MKL_jll", "Preferences", "Reexport"]
-git-tree-sha1 = "463cb335fa22c4ebacfd1faba5fde14edb80d96c"
+git-tree-sha1 = "505876577b5481e50d089c1c68899dfb6faebc62"
 uuid = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
-version = "1.4.5"
+version = "1.4.6"
 
 [[deps.FFTW_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -904,9 +1012,9 @@ version = "1.6.0"
 
 [[deps.GridLayoutBase]]
 deps = ["GeometryBasics", "InteractiveUtils", "Observables"]
-git-tree-sha1 = "70938436e2720e6cb8a7f2ca9f1bbdbf40d7f5d0"
+git-tree-sha1 = "169c3dc5acae08835a573a8a3e25c62f689f8b5c"
 uuid = "3955a311-db13-416c-9275-1d80ed98e5e9"
-version = "0.6.4"
+version = "0.6.5"
 
 [[deps.Grisu]]
 git-tree-sha1 = "53bb909d1151e57e2484c3d1b53e19552b887fb2"
@@ -1137,9 +1245,9 @@ version = "1.3.0"
 
 [[deps.LabelledArrays]]
 deps = ["ArrayInterface", "ChainRulesCore", "LinearAlgebra", "MacroTools", "StaticArrays"]
-git-tree-sha1 = "3696fdc1d3ef6e4d19551c92626066702a5db91c"
+git-tree-sha1 = "3e6a4c07ea78db18f885e474c7de466ce257de85"
 uuid = "2ee39098-c373-598a-b85f-a56591580800"
-version = "1.7.1"
+version = "1.7.3"
 
 [[deps.Latexify]]
 deps = ["Formatting", "InteractiveUtils", "LaTeXStrings", "MacroTools", "Markdown", "Printf", "Requires"]
@@ -1224,9 +1332,9 @@ uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
 [[deps.LinearSolve]]
 deps = ["ArrayInterface", "DocStringExtensions", "IterativeSolvers", "KLU", "Krylov", "KrylovKit", "LinearAlgebra", "RecursiveFactorization", "Reexport", "Requires", "SciMLBase", "Setfield", "SparseArrays", "SuiteSparse", "UnPack"]
-git-tree-sha1 = "55e98c887e31f5c7a1901328e3f8ccd806024f45"
+git-tree-sha1 = "f27bb8e4eabdb93ed3703c55025b111e045ffe81"
 uuid = "7ed4a6bd-45f5-4d41-b270-4a48e9bafcae"
-version = "1.11.3"
+version = "1.12.0"
 
 [[deps.LogExpFunctions]]
 deps = ["ChainRulesCore", "ChangesOfVariables", "DocStringExtensions", "InverseFunctions", "IrrationalConstants", "LinearAlgebra"]
@@ -1245,9 +1353,9 @@ version = "0.12.102"
 
 [[deps.MKL_jll]]
 deps = ["Artifacts", "IntelOpenMP_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "Pkg"]
-git-tree-sha1 = "5455aef09b40e5020e1520f551fa3135040d4ed0"
+git-tree-sha1 = "e595b205efd49508358f7dc670a940c790204629"
 uuid = "856f044c-d86e-5d09-b602-aeab76dc8ba7"
-version = "2021.1.1+2"
+version = "2022.0.0+0"
 
 [[deps.MacroTools]]
 deps = ["Markdown", "Random"]
@@ -1339,15 +1447,15 @@ version = "0.2.2"
 
 [[deps.MultivariatePolynomials]]
 deps = ["DataStructures", "LinearAlgebra", "MutableArithmetics"]
-git-tree-sha1 = "fa6ce8c91445e7cd54de662064090b14b1089a6d"
+git-tree-sha1 = "81b44a8cba10ff3cfb564da784bf92e5f834da0e"
 uuid = "102ac46a-7ee4-5c85-9060-abc95bfdeaa3"
-version = "0.4.2"
+version = "0.4.3"
 
 [[deps.MutableArithmetics]]
 deps = ["LinearAlgebra", "SparseArrays", "Test"]
-git-tree-sha1 = "842b5ccd156e432f369b204bb704fd4020e383ac"
+git-tree-sha1 = "ba8c0f8732a24facba709388c74ba99dcbfdda1e"
 uuid = "d8a4904e-b15c-11e9-3269-09a3773c0cb0"
-version = "0.3.3"
+version = "1.0.0"
 
 [[deps.NLSolversBase]]
 deps = ["DiffResults", "Distributed", "FiniteDiff", "ForwardDiff"]
@@ -1432,9 +1540,9 @@ version = "0.5.5+0"
 
 [[deps.Optim]]
 deps = ["Compat", "FillArrays", "ForwardDiff", "LineSearches", "LinearAlgebra", "NLSolversBase", "NaNMath", "Parameters", "PositiveFactorizations", "Printf", "SparseArrays", "StatsBase"]
-git-tree-sha1 = "045d10789f5daff18deb454d5923c6996017c2f3"
+git-tree-sha1 = "bc0a748740e8bc5eeb9ea6031e6f050de1fc0ba2"
 uuid = "429524aa-4258-5aef-a3af-852621145aeb"
-version = "1.6.1"
+version = "1.6.2"
 
 [[deps.Opus_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1461,9 +1569,9 @@ version = "8.44.0+0"
 
 [[deps.PDMats]]
 deps = ["LinearAlgebra", "SparseArrays", "SuiteSparse"]
-git-tree-sha1 = "ee26b350276c51697c9c2d88a072b339f9f03d73"
+git-tree-sha1 = "7e2166042d1698b6072352c74cfd1fca2a968253"
 uuid = "90014a1f-27ba-587c-ab20-58faa44d9150"
-version = "0.11.5"
+version = "0.11.6"
 
 [[deps.PNGFiles]]
 deps = ["Base64", "CEnum", "ImageCore", "IndirectArrays", "OffsetArrays", "libpng_jll"]
@@ -1572,9 +1680,9 @@ version = "0.2.3"
 
 [[deps.Preferences]]
 deps = ["TOML"]
-git-tree-sha1 = "2cf929d64681236a2e074ffafb8d568733d2e6af"
+git-tree-sha1 = "de893592a221142f3db370f48290e3a2ef39998f"
 uuid = "21216c6a-2e73-6563-6e65-726566657250"
-version = "1.2.3"
+version = "1.2.4"
 
 [[deps.PrettyTables]]
 deps = ["Crayons", "Formatting", "Markdown", "Reexport", "Tables"]
@@ -1807,9 +1915,9 @@ version = "1.20.2"
 
 [[deps.SpecialFunctions]]
 deps = ["ChainRulesCore", "IrrationalConstants", "LogExpFunctions", "OpenLibm_jll", "OpenSpecFun_jll"]
-git-tree-sha1 = "85e5b185ed647b8ee89aa25a7788a2b43aa8a74f"
+git-tree-sha1 = "5ba658aeecaaf96923dce0da9e703bd1fe7666f9"
 uuid = "276daf66-3868-5448-9aa4-cd146d93841b"
-version = "2.1.3"
+version = "2.1.4"
 
 [[deps.SplittablesBase]]
 deps = ["Setfield", "Test"]
@@ -1831,9 +1939,9 @@ version = "0.4.1"
 
 [[deps.StaticArrays]]
 deps = ["LinearAlgebra", "Random", "Statistics"]
-git-tree-sha1 = "6354dfaf95d398a1a70e0b28238321d5d17b2530"
+git-tree-sha1 = "74fb527333e72ada2dd9ef77d98e4991fb185f04"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "1.4.0"
+version = "1.4.1"
 
 [[deps.Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
@@ -1997,9 +2105,9 @@ version = "0.3.0"
 
 [[deps.TriangularSolve]]
 deps = ["CloseOpenIntervals", "IfElse", "LayoutPointers", "LinearAlgebra", "LoopVectorization", "Polyester", "Static", "VectorizationBase"]
-git-tree-sha1 = "c3ab8b77b82fd92e2b6eea8a275a794d5a6e4011"
+git-tree-sha1 = "5cbc1a4551fcf8afe8f80bb4f1f13e3271ee2656"
 uuid = "d5829a12-d9aa-46ab-831f-fb7c9ab06edf"
-version = "0.1.9"
+version = "0.1.10"
 
 [[deps.URIs]]
 git-tree-sha1 = "97bbe755a53fe859669cd907f2d96aee8d2c1355"
@@ -2119,10 +2227,10 @@ uuid = "700de1a5-db45-46bc-99cf-38207098b444"
 version = "0.2.2"
 
 [[deps.isoband_jll]]
-deps = ["Libdl", "Pkg"]
-git-tree-sha1 = "a1ac99674715995a536bbce674b068ec1b7d893d"
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "51b5eeb3f98367157a7a12a1fb0aa5328946c03c"
 uuid = "9a68df92-36a6-505f-a73e-abb412b6bfb4"
-version = "0.2.2+0"
+version = "0.2.3+0"
 
 [[deps.libass_jll]]
 deps = ["Artifacts", "Bzip2_jll", "FreeType2_jll", "FriBidi_jll", "HarfBuzz_jll", "JLLWrappers", "Libdl", "Pkg", "Zlib_jll"]
@@ -2189,19 +2297,24 @@ version = "3.5.0+0"
 # ╠═c986672c-e787-41fc-9a25-63f498f24d4b
 # ╟─d7f3703a-dee2-46ce-a052-92d44938c965
 # ╠═1b12f164-be6e-444c-bba8-c27b1cccb730
-# ╠═05db1f52-1c87-465f-8b1b-25e45aed6d0b
+# ╟─05db1f52-1c87-465f-8b1b-25e45aed6d0b
 # ╟─b7222499-de8e-452f-ab52-e1a443109147
+# ╠═245ddab0-9991-465c-9074-0d02392950c1
 # ╠═a2469790-8df5-4c89-b683-6b140004a928
 # ╠═57abbd90-8670-4117-ae4c-dce562abe162
-# ╠═d5bad535-7150-40a9-b319-0c86617264e1
-# ╠═b9e889d9-5edb-498e-b560-fd699fe2de73
+# ╟─b9e889d9-5edb-498e-b560-fd699fe2de73
 # ╟─35d612fb-b859-42b1-9ea2-ae90ad01dfb8
 # ╟─abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
-# ╠═fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
-# ╠═abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
-# ╠═fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
-# ╠═dcb60e56-3ddc-4463-aa64-2e462df82910
-# ╠═3b303ac4-42ee-4ab3-8893-d60035a2d4be
-# ╠═96528e86-2a83-4b59-a412-de66b4475d52
+# ╟─fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
+# ╟─ed427b2f-2fa9-4659-9ad4-7d0c606721b2
+# ╟─23d028df-dbd7-4188-ae74-7da3c071e549
+# ╟─e702092a-0b2e-475e-8dc1-51308be65c64
+# ╟─7b58b65f-a35a-461e-a4b6-4cb16646642e
+# ╟─a347066c-c48e-42e9-a051-ac530d9bb7eb
+# ╟─96528e86-2a83-4b59-a412-de66b4475d52
+# ╟─084b9228-5deb-4cef-bf6b-d962ca884dbe
+# ╟─4e829cbd-3d8c-4ef6-8898-1af9443f01ac
+# ╟─df6821d6-9c47-4d12-a62f-1b458c5ac6ba
+# ╟─ef49613a-22c3-4775-b903-665544c77bdf
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
