@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.7
+# v0.18.0
 
 using Markdown
 using InteractiveUtils
@@ -19,7 +19,7 @@ begin
 	# simulation/solver packages
 	using Catalyst, DifferentialEquations
 	# notebook utilities
-	using CairoMakie, DataFrames, PlutoUI, ColorSchemes
+	using CairoMakie, ColorSchemes, DataFrames, PlutoUI
 end
 
 # ╔═╡ 2ec89215-0634-498c-94ee-389b9b8d7034
@@ -49,7 +49,7 @@ begin
 
     const k = 1e-3 # random parameter for using Kp
 
-    const ρ_Si  = 2.33 # g/cm³
+    const ρ_Si  = 2.33   # g/cm³
     const MW_Si = 28.086 # g/mol
 end;
 
@@ -103,17 +103,17 @@ md"""
 md"""
 ## Physical System
 
-Reactor Volume: $(@bind reactor_volume PlutoUI.NumberField(10:0.1:2500., default=100.)) L
+Reactor Volume: $(@bind reactor_volume PlutoUI.Slider(10:0.1:2500., default=100., show_value=true)) L
 
-Wafer Diameter: $(@bind wafer_diameter PlutoUI.NumberField(10:45, default=30)) cm
+Wafer Diameter: $(@bind wafer_diameter PlutoUI.Slider(10:45, default=30, show_value=true)) cm
 
-Temperature: $(@bind temperature PlutoUI.NumberField(950:1250, default=1000)) K
+Temperature: $(@bind temperature PlutoUI.Slider(950:1250, default=1000, show_value=true)) K
 
-Initial SiCl₄ Pressure: $(@bind p_SiCl₄⁰ PlutoUI.NumberField(1:1:760, default=760)) mmHg
+Initial SiCl₄ Pressure: $(@bind p_SiCl₄⁰ PlutoUI.Slider(1:1:760, default=760, show_value=true)) mmHg
 
-Initial H₂ Pressure: $(@bind p_H₂⁰ PlutoUI.NumberField(1:1:760, default=760)) mmHg
+Initial H₂ Pressure: $(@bind p_H₂⁰ PlutoUI.Slider(1:1:760, default=760, show_value=true)) mmHg
 
-Maximum Run Time: $(@bind t_max PlutoUI.NumberField(60:60:7200, default=3600)) s
+Maximum Run Time: $(@bind t_max PlutoUI.Slider(60:60:7200, default=3600, show_value=true)) s
 """
 
 # ╔═╡ a2469790-8df5-4c89-b683-6b140004a928
@@ -175,8 +175,8 @@ md"""
 
 # ╔═╡ abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
 begin
-	max_idx = argmax(δ)
-	
+	max_idx = argmax([isnan(d) ? 0 : d for d in δ])
+
 md"""
 **Maximum Film Thickness**: $(round(δ[max_idx], digits=2)) μm
 
@@ -243,9 +243,11 @@ dδ = estimate_derivative!(δ)[1:end-1] # PAUL SAID DO THIS
 idx = findfirst(dδ .<= 0.0) # find the position in the derivative where dδ = 0
 
 # ╔═╡ 23d028df-dbd7-4188-ae74-7da3c071e549
+if ! isnothing(idx)
 md"""
 **Switched from Deposition to Etching at**: $(round(sol[idx, :timestamp], digits=2)) s
 """
+end
 
 # ╔═╡ e702092a-0b2e-475e-8dc1-51308be65c64
 begin
@@ -258,8 +260,9 @@ begin
 
 	lines!(ax, sol[1:end-1, :timestamp], dδ)
 			# sloppy solution to selectively plotting
-
-	vlines!(ax, sol[idx, :timestamp], linestyle = :dash, color = :red)
+	if ! isnothing(idx)
+		vlines!(ax, sol[idx, :timestamp], linestyle = :dash, color = :red)
+	end
 	fig
 
 end
@@ -338,7 +341,6 @@ md"
 
 # ╔═╡ 4e829cbd-3d8c-4ef6-8898-1af9443f01ac
 begin
-
 	local fig = Figure()
 	local ax = Axis(fig[1,1],
 				title = "Forward Reaction Rate Constants",
@@ -363,6 +365,12 @@ begin
 	fig
 
 end
+
+# ╔═╡ c4281e1c-1403-43bc-87ee-320836e2035d
+gaseous_species = Symbol.(["SiCl₄(t)", "H₂(t)", "HCl(t)", "SiCl₂(t)"])
+
+# ╔═╡ 876c2820-c98a-4689-a07e-72ea0d4749c0
+sol[:, gaseous_species[1]] ./ map(r -> sum([r[x] for x in gaseous_species]), eachrow(sol))
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -2277,17 +2285,19 @@ version = "3.5.0+0"
 # ╠═d5bad535-7150-40a9-b319-0c86617264e1
 # ╟─b9e889d9-5edb-498e-b560-fd699fe2de73
 # ╟─35d612fb-b859-42b1-9ea2-ae90ad01dfb8
-# ╟─abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
+# ╠═abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
 # ╟─fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
 # ╠═ed427b2f-2fa9-4659-9ad4-7d0c606721b2
 # ╟─3abf7000-0683-4238-9e89-57606aba09b6
 # ╠═4f95bf04-8f75-4ad4-9a2a-4c62be7b05c7
-# ╟─23d028df-dbd7-4188-ae74-7da3c071e549
+# ╠═23d028df-dbd7-4188-ae74-7da3c071e549
 # ╠═e702092a-0b2e-475e-8dc1-51308be65c64
 # ╠═3b303ac4-42ee-4ab3-8893-d60035a2d4be
 # ╟─7b58b65f-a35a-461e-a4b6-4cb16646642e
 # ╟─96528e86-2a83-4b59-a412-de66b4475d52
 # ╟─084b9228-5deb-4cef-bf6b-d962ca884dbe
-# ╟─4e829cbd-3d8c-4ef6-8898-1af9443f01ac
+# ╠═4e829cbd-3d8c-4ef6-8898-1af9443f01ac
+# ╠═c4281e1c-1403-43bc-87ee-320836e2035d
+# ╠═876c2820-c98a-4689-a07e-72ea0d4749c0
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
