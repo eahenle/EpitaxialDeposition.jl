@@ -65,7 +65,7 @@ begin
     # K1(T)  = K10 * exp(-Ea1 / (R * T)) # [cm³]
     K2(T)  = K20 * exp(-Ea2 / (R * T)) # [cm/s]
     K3(T)  = K30 * exp(-Ea3 / (R * T)) # [cm/s]
-    kKp(T) = k * 10^(10.38 - 16770 / T) 
+    kKp(T) = k * 10^(10.38 - 16770 / T) # [∅]
 end;
 
 # ╔═╡ c986672c-e787-41fc-9a25-63f498f24d4b
@@ -103,17 +103,17 @@ md"""
 md"""
 ## Physical System
 
-Reactor Volume: $(@bind reactor_volume PlutoUI.NumberField(10:0.1:2500., default=100.)) L
+Reactor Volume: $(@bind reactor_volume PlutoUI.Slider(10:0.1:2500., default=100., show_value = true)) L
 
-Wafer Diameter: $(@bind wafer_diameter PlutoUI.NumberField(10:45, default=30)) cm
+Wafer Diameter: $(@bind wafer_diameter PlutoUI.Slider(10:45, default=30, show_value = true)) cm
 
-Temperature: $(@bind temperature PlutoUI.NumberField(950:1250, default=1000)) K
+Temperature: $(@bind temperature PlutoUI.Slider(950:1450, default=1000, show_value = true)) K
 
-Initial SiCl₄ Pressure: $(@bind p_SiCl₄⁰ PlutoUI.NumberField(1:1:760, default=760)) mmHg
+Initial SiCl₄ Pressure: $(@bind p_SiCl₄⁰ PlutoUI.Slider(1:1:760, default=760, show_value = true)) mmHg
 
-Initial H₂ Pressure: $(@bind p_H₂⁰ PlutoUI.NumberField(1:1:760, default=760)) mmHg
+Initial H₂ Pressure: $(@bind p_H₂⁰ PlutoUI.Slider(1:1:760, default=760, show_value = true)) mmHg
 
-Maximum Run Time: $(@bind t_max PlutoUI.NumberField(60:60:7200, default=3600)) s
+Maximum Run Time: $(@bind t_max PlutoUI.Slider(60:60:7200, default=3600, show_value = true)) s
 """
 
 # ╔═╡ a2469790-8df5-4c89-b683-6b140004a928
@@ -124,7 +124,8 @@ function film_thickness(Si_dep, Si_etch;
     dep_mass = net_mol * MW # net mass deposited Si (g)
     dep_vol  = dep_mass / ρ # net volume deposited Si (cm³)
     δ        = dep_vol / (π * d^2 / 4) * 1e4 # film thickness (μm)
-    return δ >= 0 ? δ : NaN
+    return δ 
+	# >= 0 ? δ : NaN
 end;
 
 # ╔═╡ 57abbd90-8670-4117-ae4c-dce562abe162
@@ -175,7 +176,7 @@ md"""
 
 # ╔═╡ abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
 begin
-	max_idx = argmax(δ)
+	max_idx = argmax([isnan(d) ? 0 : d for d in δ])
 	
 md"""
 **Maximum Film Thickness**: $(round(δ[max_idx], digits=2)) μm
@@ -202,7 +203,7 @@ begin
 	)
 	
     for name in plotted_species
-        lines!(sol[:, :timestamp], 1000 .* sol[:, name], label=chop(name, tail=3))
+        lines!(sol[:, :timestamp], 1000 .* sol[:, name], label=chop(name, tail=3)) #mol/L --> mmol/L
     end
 
 	fig[1,2] = Legend(fig, ax)
@@ -243,7 +244,7 @@ begin
 	local fig = Figure()
 	local ax = Axis(fig[1,1],
 			title = "Si Film Growth Rate over Time",
-			ylabel = "δ Growth [μm/s]",
+			ylabel = "δ Growth Rate [μm/s]",
 			xlabel = "Time [s]")
 
 	lines!(ax, sol[1:end-1, :timestamp], dδ)
@@ -251,7 +252,7 @@ begin
 	
 	if ! isnothing(idx)
 		
-		vlines!(ax, sol[idx, :timestamp], linestyle = :dash, color = :red)
+		vlines!(ax, sol[idx, :timestamp], linestyle = :dash, color = (:red,0.5))
 
 	end
 	
@@ -263,7 +264,7 @@ end
 if ! isnothing(idx)
 	
 md"""
-** Switched from Deposition to Etching at**: $(round(sol[idx, :timestamp], digits=2)) s
+**Switched from Deposition to Etching at**: $(round(sol[idx, :timestamp], digits=2)) s
 """
 
 end
@@ -290,18 +291,18 @@ begin
 
 	max_δ = zeros(length(temp_span))
 	
-	for (i,temperature) in enumerate(temp_span)
+	for (i,temp) in enumerate(temp_span)
 	    
 		# initial values	
 	    u₀ = [
-	        :SiCl₄   => p_SiCl₄⁰ / 62.4 / temperature,
-	        :H₂      => p_H₂⁰ / 62.4 / temperature,
+	        :SiCl₄   => p_SiCl₄⁰ / 62.4 / temp,
+	        :H₂      => p_H₂⁰ / 62.4 / temp,
 	        :Si_dep  => 0.0,
 	        :Si_etch => 0.0,
 	        :HCl     => 0.0, 
 	        :SiCl₂   => 0.0,
 	        :k       => k,
-	        :T       => temperature
+	        :T       => temp
 	    ]
 	
 	    # time interval of simulation
@@ -310,13 +311,14 @@ begin
 	    # define the ODEs and solve
 	    prob = ODEProblem(deposition, u₀, timespan)
 	    sol = DataFrame(solve(prob, Tsit5(), saveat=0.05, maxiters=1e8))
-		δ = film_thickness.(sol[:, "Si_dep(t)"], sol[:, "Si_etch(t)"])
+		local δ = film_thickness.(sol[:, "Si_dep(t)"], sol[:, "Si_etch(t)"])
 
-		not_NaN = isnan.(δ) .== false # find all values in δ that aren't NaN
-		max_δ[i] = maximum(δ[not_NaN]) # use not_NaN as a mask
-		
-		lines!(sol[:, :timestamp], δ, 
-				label = "T = $temperature [K]", 
+		non_negative = δ .> 0.0 # find all values in δ that aren't NaN
+		max_δ[i] = maximum(δ[non_negative]) # use not_NaN as a mask
+
+	
+		lines!(sol[non_negative, :timestamp], δ[non_negative], 
+				label = "T = $temp [K]", 
 				color = ColorSchemes.viridis[20*i])
 
 	end
@@ -364,6 +366,46 @@ begin
 	fig[2,2] = Legend(fig, ax)
 	
 	fig
+
+end
+
+# ╔═╡ df6821d6-9c47-4d12-a62f-1b458c5ac6ba
+md"
+## Parametric Study #3: 
+### Growth Rate as a Function of ``y_{SiCl_4}``"
+
+# ╔═╡ ef49613a-22c3-4775-b903-665544c77bdf
+begin
+
+	local fig = Figure()
+	local ax = Axis(fig[1,1],
+				title = "Growth Rate versus SiCl₄ Mole Fraction",
+				ylabel = "Film Growth Rate [μm/min]",
+				xlabel = "Mole Fraction of SiCl₄")
+
+	gaseous_species = Symbol.(["SiCl₄(t)","H₂(t)","HCl(t)","SiCl₂(t)"])
+
+	 
+
+	all_gases = map(r -> sum([r[x] for x in gaseous_species]), eachrow(sol))
+	
+	y_SiCl₄ = sol[:, gaseous_species[1]] ./ all_gases
+
+	lines!(ax, y_SiCl₄[1:end-1], dδ .* 60)
+
+	local idx = argmin(abs.(dδ))
+	
+	ax.xreversed = true
+
+	if ! isnothing(idx)
+		
+		vlines!(ax, y_SiCl₄[idx], linestyle = :dash, color = (:red,0.5))
+
+	end
+	
+	fig
+
+	
 
 end
 
@@ -2280,15 +2322,17 @@ version = "3.5.0+0"
 # ╠═d5bad535-7150-40a9-b319-0c86617264e1
 # ╟─b9e889d9-5edb-498e-b560-fd699fe2de73
 # ╟─35d612fb-b859-42b1-9ea2-ae90ad01dfb8
-# ╟─abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
+# ╠═abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
 # ╠═fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
-# ╠═ed427b2f-2fa9-4659-9ad4-7d0c606721b2
+# ╟─ed427b2f-2fa9-4659-9ad4-7d0c606721b2
 # ╟─23d028df-dbd7-4188-ae74-7da3c071e549
 # ╠═e702092a-0b2e-475e-8dc1-51308be65c64
 # ╠═3b303ac4-42ee-4ab3-8893-d60035a2d4be
 # ╟─7b58b65f-a35a-461e-a4b6-4cb16646642e
 # ╠═96528e86-2a83-4b59-a412-de66b4475d52
 # ╟─084b9228-5deb-4cef-bf6b-d962ca884dbe
-# ╟─4e829cbd-3d8c-4ef6-8898-1af9443f01ac
+# ╠═4e829cbd-3d8c-4ef6-8898-1af9443f01ac
+# ╟─df6821d6-9c47-4d12-a62f-1b458c5ac6ba
+# ╠═ef49613a-22c3-4775-b903-665544c77bdf
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
