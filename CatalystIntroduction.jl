@@ -109,9 +109,9 @@ Wafer Diameter: $(@bind wafer_diameter PlutoUI.Slider(10:45, default=30, show_va
 
 Temperature: $(@bind temperature PlutoUI.Slider(950:1450, default=1000, show_value = true)) K
 
-Initial SiCl₄ Pressure: $(@bind p_SiCl₄⁰ PlutoUI.Slider(1:1:760, default=760, show_value = true)) mmHg
+Mole Fraction of SiCl₄: $(@bind y_SiCl₄ PlutoUI.Slider(0:0.05:1, default=0.5, show_value = true)) 
 
-Initial H₂ Pressure: $(@bind p_H₂⁰ PlutoUI.Slider(1:1:760, default=760, show_value = true)) mmHg
+Total System Pressure: $(@bind Psys PlutoUI.Slider(1:1:760, default=760, show_value = true)) mmHg
 
 Maximum Run Time: $(@bind t_max PlutoUI.Slider(60:60:7200, default=3600, show_value = true)) s
 """
@@ -131,12 +131,11 @@ end;
 # ╔═╡ 57abbd90-8670-4117-ae4c-dce562abe162
 begin
     odesys = convert(ODESystem, deposition, combinatoric_ratelaws=false)
-    # combinatoric_ratelaws = false makes it so that the rate laws are elementary with regard to stoichiometry, and coefficients aren't based on factorials
 
     # initial values
     local u₀ = [
-        :SiCl₄   => p_SiCl₄⁰ / 62.4 / temperature,
-        :H₂      => p_H₂⁰ / 62.4 / temperature,
+        :SiCl₄   => (y_SiCl₄ * Psys) / 62.4 / temperature,
+	    :H₂      => Psys * (1 - y_SiCl₄) / 62.4 / temperature,
         :Si_dep  => 0.0,
         :Si_etch => 0.0,
         :HCl     => 0.0, 
@@ -168,6 +167,14 @@ begin
     # Si_net must be within small margin of diff. btwn. initial and final Si amts.
     @assert isapprox(a, b)
 end;
+
+# ╔═╡ eba36605-ea73-4e2a-8cfc-cf3d9533cdc6
+#= 
+Initial H₂ Pressure: $(@bind p_H₂⁰ PlutoUI.Slider(1:1:760, default=760, show_value = true)) mmHg
+
+Initial SiCl₄ Pressure: $(@bind p_SiCl₄⁰ PlutoUI.Slider(1:1:760, default=760, show_value = true)) mmHg
+
+=#
 
 # ╔═╡ 35d612fb-b859-42b1-9ea2-ae90ad01dfb8
 md"""
@@ -244,10 +251,10 @@ begin
 	local fig = Figure()
 	local ax = Axis(fig[1,1],
 			title = "Si Film Growth Rate over Time",
-			ylabel = "δ Growth Rate [μm/s]",
+			ylabel = "Film Growth Rate dδ/dt [μm/min]",
 			xlabel = "Time [s]")
 
-	lines!(ax, sol[1:end-1, :timestamp], dδ)
+	lines!(ax, sol[1:end-1, :timestamp], dδ .* 60)
 			# sloppy solution to selectively plotting
 	
 	if ! isnothing(idx)
@@ -269,13 +276,13 @@ md"""
 
 end
 
-# ╔═╡ 3b303ac4-42ee-4ab3-8893-d60035a2d4be
-md"Temperature Range: $(@bind temp_span PlutoUI.RangeSlider(900:50:1400)) K"
-
 # ╔═╡ 7b58b65f-a35a-461e-a4b6-4cb16646642e
 md"
 ## Parametric Study #1: 
 ### Influence of Temperature on Film Thickness"
+
+# ╔═╡ a347066c-c48e-42e9-a051-ac530d9bb7eb
+md"Temperature Range: $(@bind temp_span PlutoUI.RangeSlider(900:50:1400)) K"
 
 # ╔═╡ 96528e86-2a83-4b59-a412-de66b4475d52
 begin
@@ -295,8 +302,8 @@ begin
 	    
 		# initial values	
 	    u₀ = [
-	        :SiCl₄   => p_SiCl₄⁰ / 62.4 / temp,
-	        :H₂      => p_H₂⁰ / 62.4 / temp,
+	        :SiCl₄   => (y_SiCl₄ * Psys) / 62.4 / temp,
+	        :H₂      => Psys * (1 - y_SiCl₄) / 62.4 / temp,
 	        :Si_dep  => 0.0,
 	        :Si_etch => 0.0,
 	        :HCl     => 0.0, 
@@ -313,8 +320,8 @@ begin
 	    sol = DataFrame(solve(prob, Tsit5(), saveat=0.05, maxiters=1e8))
 		local δ = film_thickness.(sol[:, "Si_dep(t)"], sol[:, "Si_etch(t)"])
 
-		non_negative = δ .> 0.0 # find all values in δ that aren't NaN
-		max_δ[i] = maximum(δ[non_negative]) # use not_NaN as a mask
+		non_negative = δ .>= 0.0 # find all values in δ that are > 0
+		max_δ[i] = maximum(δ[non_negative]) # use non_negative as a mask
 
 	
 		lines!(sol[non_negative, :timestamp], δ[non_negative], 
@@ -331,10 +338,14 @@ begin
 		ylabel = "Maximum δ [μm]")
 
 	scatter!(ax2, temp_span, max_δ)
-	
+
+	# ylims!(floor(minimum(max_δ)), ceil(maximum(max_δ)))
 	fig
 
 end
+
+# ╔═╡ 4a1f107c-6d2b-4567-9dce-fb1f406c8c6c
+maximum(δ[δ .> 0.0])
 
 # ╔═╡ 084b9228-5deb-4cef-bf6b-d962ca884dbe
 md"
@@ -379,7 +390,7 @@ begin
 
 	local fig = Figure()
 	local ax = Axis(fig[1,1],
-				title = "Growth Rate versus SiCl₄ Mole Fraction",
+				title = "Growth Rate versus SiCl₄ Mole Fraction, T = $temperature [K]",
 				ylabel = "Film Growth Rate [μm/min]",
 				xlabel = "Mole Fraction of SiCl₄")
 
@@ -389,17 +400,17 @@ begin
 
 	all_gases = map(r -> sum([r[x] for x in gaseous_species]), eachrow(sol))
 	
-	y_SiCl₄ = sol[:, gaseous_species[1]] ./ all_gases
+	molfrac_SiCl4 = sol[:, gaseous_species[1]] ./ all_gases
 
-	lines!(ax, y_SiCl₄[1:end-1], dδ .* 60)
+	lines!(ax, molfrac_SiCl4[1:end-1], dδ .* 60)
 
-	local idx = argmin(abs.(dδ))
+	local idx = findfirst(dδ .< 0)
 	
 	ax.xreversed = true
 
 	if ! isnothing(idx)
 		
-		vlines!(ax, y_SiCl₄[idx], linestyle = :dash, color = (:red,0.5))
+		vlines!(ax, molfrac_SiCl4[idx], linestyle = :dash, color = (:red,0.5))
 
 	end
 	
@@ -2320,16 +2331,18 @@ version = "3.5.0+0"
 # ╠═a2469790-8df5-4c89-b683-6b140004a928
 # ╠═57abbd90-8670-4117-ae4c-dce562abe162
 # ╠═d5bad535-7150-40a9-b319-0c86617264e1
-# ╟─b9e889d9-5edb-498e-b560-fd699fe2de73
+# ╠═b9e889d9-5edb-498e-b560-fd699fe2de73
+# ╠═eba36605-ea73-4e2a-8cfc-cf3d9533cdc6
 # ╟─35d612fb-b859-42b1-9ea2-ae90ad01dfb8
 # ╠═abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
 # ╠═fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
 # ╟─ed427b2f-2fa9-4659-9ad4-7d0c606721b2
 # ╟─23d028df-dbd7-4188-ae74-7da3c071e549
-# ╠═e702092a-0b2e-475e-8dc1-51308be65c64
-# ╠═3b303ac4-42ee-4ab3-8893-d60035a2d4be
+# ╟─e702092a-0b2e-475e-8dc1-51308be65c64
 # ╟─7b58b65f-a35a-461e-a4b6-4cb16646642e
+# ╟─a347066c-c48e-42e9-a051-ac530d9bb7eb
 # ╠═96528e86-2a83-4b59-a412-de66b4475d52
+# ╠═4a1f107c-6d2b-4567-9dce-fb1f406c8c6c
 # ╟─084b9228-5deb-4cef-bf6b-d962ca884dbe
 # ╠═4e829cbd-3d8c-4ef6-8898-1af9443f01ac
 # ╟─df6821d6-9c47-4d12-a62f-1b458c5ac6ba
