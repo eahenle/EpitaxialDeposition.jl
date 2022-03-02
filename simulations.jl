@@ -20,8 +20,6 @@ begin
     import Pkg
     Pkg.activate(".")
     using EpitaxialDeposition
-    # load other dependencies
-    using DataFrames
     # load notebook utilities
     using CairoMakie, ColorSchemes, PlutoUI
 end
@@ -40,6 +38,14 @@ md"""
 # ╔═╡ 4842f48e-3d89-4104-b015-c383e0c63072
 PARAMS # from imported project code
 
+# ╔═╡ d7f3703a-dee2-46ce-a052-92d44938c965
+md"""
+## Chemical Reaction Network
+"""
+
+# ╔═╡ 1b12f164-be6e-444c-bba8-c27b1cccb730
+deposition_rxn_network
+
 # ╔═╡ abb094af-f9c7-42a5-bdc7-d033ac9a5d72
 md"""
 ## Equilibrium/Rate Expressions
@@ -56,14 +62,6 @@ $K_3(T)=K_{30} * \exp(-E_{a3}/RT)$
 $kK_p(T) = k * \exp(a-b/T)$
 """
 
-# ╔═╡ d7f3703a-dee2-46ce-a052-92d44938c965
-md"""
-## Chemical Reaction Network
-"""
-
-# ╔═╡ 1b12f164-be6e-444c-bba8-c27b1cccb730
-deposition_rxn_network
-
 # ╔═╡ 63d22599-3509-4027-b6bd-898dca165f65
 md"""
 ## System of Differential Equations
@@ -71,7 +69,7 @@ md"""
 
 # ╔═╡ 05db1f52-1c87-465f-8b1b-25e45aed6d0b
 # view the system of equations
-odesys
+EpitaxialDeposition.odesys
 
 # ╔═╡ b7222499-de8e-452f-ab52-e1a443109147
 md"""
@@ -82,41 +80,24 @@ md"""
 md"""
 ## Physical System
 
-Reactor Volume: $(@bind reactor_volume PlutoUI.Slider(10:0.1:2500., default=100., show_value = true)) L
+Reactor Volume: $(@bind reactor_volume PlutoUI.Slider(10.:0.1:2500., default=100., show_value = true)) L
 
-Wafer Diameter: $(@bind wafer_diameter PlutoUI.Slider(10:45, default=30, show_value = true)) cm
+Wafer Diameter: $(@bind wafer_diameter PlutoUI.Slider(10.:45., default=30., show_value = true)) cm
 
-Temperature: $(@bind temperature PlutoUI.Slider(950:1450, default=1000, show_value = true)) K
+Temperature: $(@bind temperature PlutoUI.Slider(950.:1450., default=1000., show_value = true)) K
 
-Mole Fraction of SiCl₄: $(@bind y_SiCl₄ PlutoUI.Slider(0:0.05:1, default=0.5, show_value = true)) 
+Mole Fraction of SiCl₄: $(@bind y_SiCl₄ PlutoUI.Slider(0.:0.05:1., default=0.5, show_value = true)) 
 
-Total System Pressure: $(@bind Psys PlutoUI.Slider(1:1:760, default=760, show_value = true)) mmHg
+Total System Pressure: $(@bind Psys PlutoUI.Slider(1.:1:760., default=760., show_value = true)) mmHg
 
-Maximum Run Time: $(@bind t_max PlutoUI.Slider(60:60:7200, default=3600, show_value = true)) s
+Maximum Run Time: $(@bind t_max PlutoUI.Slider(60.:60.:7200., default=3600., show_value = true)) s
 """
 
-# ╔═╡ 57abbd90-8670-4117-ae4c-dce562abe162
+# ╔═╡ 44189ce2-83df-4b77-8a5d-44383838d2ee
 begin
-    # initial values
-    local u₀ = [
-        :SiCl₄   => (y_SiCl₄ * Psys) / 62.4 / temperature,
-        :H₂      => Psys * (1 - y_SiCl₄) / 62.4 / temperature,
-        :Si_dep  => 0.0,
-        :Si_etch => 0.0,
-        :HCl     => 0.0, 
-        :SiCl₂   => 0.0,
-        :k       => PARAMS[:kKp][:k],
-        :T       => temperature
-    ]
-
-    # time interval of simulation
-    timespan = (0.0, t_max)
-
-    # define the ODEs and solve
-    prob = ODEProblem(deposition_rxn_network, u₀, timespan)
-    sol = DataFrame(solve(prob, Tsit5(), saveat=PARAMS[:Δt], maxiters=1e8))
+	sol = run_simulation(y_SiCl₄, Psys, temperature, t_max)
 	# calculate the film thickness from the simulation data
-    δ = film_thickness.(sol[:, "Si_dep(t)"], sol[:, "Si_etch(t)"])
+	δ = film_thickness.(sol[:, "Si_dep(t)"], sol[:, "Si_etch(t)"])
 end;
 
 # ╔═╡ 35d612fb-b859-42b1-9ea2-ae90ad01dfb8
@@ -170,23 +151,21 @@ end
 
 # ╔═╡ e702092a-0b2e-475e-8dc1-51308be65c64
 begin
-
     dδ = estimate_derivative(δ)
-    idx = findfirst(dδ .<= 0.0) # find the position in the derivative where dδ = 0, if it exists
     
     local fig = Figure()
-    local ax = Axis(fig[1,1],
-            title = "Si Film Growth Rate over Time",
-            ylabel = "δ Growth Rate [μm/s]",
-            xlabel = "Time [s]")
+    local ax = Axis(
+		fig[1,1],
+		title = "Si Film Growth Rate over Time",
+		ylabel = "δ Growth Rate [μm/s]",
+		xlabel = "Time [s]"
+	)
 
     lines!(ax, sol[:, :timestamp], dδ)
-            # sloppy solution to selectively plotting
-    
-    if ! isnothing(idx)
-        
-        vlines!(ax, sol[idx, :timestamp], linestyle = :dash, color = (:red,0.5))
 
+	idx = findfirst(dδ .<= 0.0) # find position, if any, where dδ = 0
+    if ! isnothing(idx)
+        vlines!(ax, sol[idx, :timestamp], linestyle = :dash, color = (:red,0.5))
     end
     
     fig
@@ -207,7 +186,7 @@ md"
 ### Influence of Temperature on Film Thickness"
 
 # ╔═╡ a347066c-c48e-42e9-a051-ac530d9bb7eb
-md"Temperature Range: $(@bind temp_span PlutoUI.RangeSlider(900:50:1400)) K"
+md"Temperature Range: $(@bind temp_span PlutoUI.RangeSlider(900.:50:1400.)) K"
 
 # ╔═╡ 96528e86-2a83-4b59-a412-de66b4475d52
 begin
@@ -222,26 +201,13 @@ begin
     local max_δ = zeros(length(temp_span))
     
     for (i, temp) in enumerate(temp_span)
-        # initial values    
-        local u₀ = [
-            :SiCl₄   => (y_SiCl₄ * Psys) / 62.4 / temp,
-            :H₂      => Psys * (1 - y_SiCl₄) / 62.4 / temp,
-            :Si_dep  => 0.0,
-            :Si_etch => 0.0,
-            :HCl     => 0.0, 
-            :SiCl₂   => 0.0,
-            :k       => PARAMS[:kKp][:k],
-            :T       => temp
-        ]
-    
-        # define the ODEs and solve
-        local prob = ODEProblem(deposition_rxn_network, u₀, timespan)
-        local sol = DataFrame(solve(prob, Tsit5(), saveat=0.05, maxiters=1e8))
+        # run simulation w/ T=temp
+        local sol = run_simulation(y_SiCl₄, Psys, temp, t_max)
         local δ = film_thickness.(sol[:, "Si_dep(t)"], sol[:, "Si_etch(t)"])
 
-        non_negative = δ .> 0.0 # find all values in δ that aren't NaN
-		if length(δ[non_negative]) > 0
-	        max_δ[i] = maximum(δ[non_negative]) # use not_NaN as a mask
+        non_negative = δ .> 0.0 # find all values in δ that aren't negative
+		if length(δ[non_negative]) > 0 # avoid iteration over empty collection
+	        max_δ[i] = maximum(δ[non_negative]) # record max
 		end
 
         lines!(
@@ -341,24 +307,24 @@ end
 # ╠═7c79cb6a-00cc-49d0-8110-bf849ae02c8c
 # ╟─036cb0e3-e198-49f7-8221-3593fbeebb95
 # ╠═4842f48e-3d89-4104-b015-c383e0c63072
-# ╟─abb094af-f9c7-42a5-bdc7-d033ac9a5d72
-# ╟─bdee4229-9e84-4bdd-a836-985a2f4b96b0
 # ╟─d7f3703a-dee2-46ce-a052-92d44938c965
 # ╟─1b12f164-be6e-444c-bba8-c27b1cccb730
+# ╟─abb094af-f9c7-42a5-bdc7-d033ac9a5d72
+# ╟─bdee4229-9e84-4bdd-a836-985a2f4b96b0
 # ╟─63d22599-3509-4027-b6bd-898dca165f65
 # ╟─05db1f52-1c87-465f-8b1b-25e45aed6d0b
 # ╟─b7222499-de8e-452f-ab52-e1a443109147
-# ╠═57abbd90-8670-4117-ae4c-dce562abe162
+# ╠═44189ce2-83df-4b77-8a5d-44383838d2ee
 # ╟─b9e889d9-5edb-498e-b560-fd699fe2de73
 # ╟─35d612fb-b859-42b1-9ea2-ae90ad01dfb8
 # ╟─abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
 # ╟─fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
 # ╟─23d028df-dbd7-4188-ae74-7da3c071e549
-# ╟─e702092a-0b2e-475e-8dc1-51308be65c64
+# ╠═e702092a-0b2e-475e-8dc1-51308be65c64
 # ╟─7b58b65f-a35a-461e-a4b6-4cb16646642e
 # ╟─a347066c-c48e-42e9-a051-ac530d9bb7eb
 # ╟─96528e86-2a83-4b59-a412-de66b4475d52
 # ╟─084b9228-5deb-4cef-bf6b-d962ca884dbe
 # ╟─4e829cbd-3d8c-4ef6-8898-1af9443f01ac
 # ╟─df6821d6-9c47-4d12-a62f-1b458c5ac6ba
-# ╟─ef49613a-22c3-4775-b903-665544c77bdf
+# ╠═ef49613a-22c3-4775-b903-665544c77bdf
