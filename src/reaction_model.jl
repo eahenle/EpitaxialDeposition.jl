@@ -1,8 +1,8 @@
 # define the temperature-dependent equilibrium constant expressions
-K(T::Float64)::Float64   = PARAMS[:rate][:K0]  * exp(-PARAMS[:energy][:E]   / (PARAMS[:R][:kcal_mol_K] * T)) # [cm/s]
-K2(T::Float64)::Float64  = PARAMS[:rate][:K20] * exp(-PARAMS[:energy][:Ea2] / (PARAMS[:R][:kcal_mol_K] * T)) # [cm/s]
-K3(T::Float64)::Float64  = PARAMS[:rate][:K30] * exp(-PARAMS[:energy][:Ea3] / (PARAMS[:R][:kcal_mol_K] * T)) # [cm/s]
-kKp(T::Float64)::Float64 = PARAMS[:kKp][:k] * 10^(PARAMS[:kKp][:Ea] - PARAMS[:kKp][:b] / T) # [∅]
+K(T::Float64)::Float64   = π * (PARAMS[:reactor][:wafer_diameter] / 2)^2 * PARAMS[:rate][:K0]  * exp(-PARAMS[:energy][:E]   / (PARAMS[:R][:kcal_mol_K] * T)) # [cm/s]
+K2(T::Float64)::Float64  = π * (PARAMS[:reactor][:wafer_diameter] / 2)^2 * PARAMS[:rate][:K20] * exp(-PARAMS[:energy][:Ea2] / (PARAMS[:R][:kcal_mol_K] * T)) # [cm/s]
+K3(T::Float64)::Float64  = π * (PARAMS[:reactor][:wafer_diameter] / 2)^2 * PARAMS[:rate][:K30] * exp(-PARAMS[:energy][:Ea3] / (PARAMS[:R][:kcal_mol_K] * T)) # [cm/s]
+kKp(T::Float64)::Float64 = π * (PARAMS[:reactor][:wafer_diameter] / 2)^2 * PARAMS[:kKp][:k] * 10^(PARAMS[:kKp][:Ea] - PARAMS[:kKp][:b] / T) # [∅]
 
 # register the equilibrium constant expressions with Catalyst
 @register_symbolic kKp(T)

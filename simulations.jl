@@ -76,28 +76,52 @@ md"""
 ## Simulation
 """
 
+# ╔═╡ 0f3ddc3f-b14d-4457-9409-bcaed1737500
+md"""
+Equilibrium tuning parameters
+"""
+
+# ╔═╡ b99e33dc-c82b-4cd0-9da1-16eca8c4aa90
+md"""
+``k=`` $(@bind k TextField(default="1")), ``a=`` $(@bind a TextField(default="10.38")), ``b=`` $(@bind b TextField(default="16770"))
+"""
+
+# ╔═╡ 68f12708-a5b2-4765-be56-9103cbb69c16
+begin
+    pk = parse(Float64, k)
+    pa = parse(Float64, a)
+    pb = parse(Float64, b)
+end;
+
+# ╔═╡ 13a069be-9b1a-48c1-b289-83671207d087
+PARAMS[:kKp][:k], PARAMS[:kKp][:Ea], PARAMS[:kKp][:b] = pk, pa, pb
+
+# ╔═╡ d747dbb9-caf9-4fce-85b8-a0698c749f32
+[-603973.0, 10.38, 21158.1]
+
 # ╔═╡ b9e889d9-5edb-498e-b560-fd699fe2de73
 md"""
 ## Physical System
 
-Reactor Volume: $(@bind reactor_volume PlutoUI.Slider(10.:0.1:2500., default=100., show_value = true)) L
-
 Wafer Diameter: $(@bind wafer_diameter PlutoUI.Slider(10.:45., default=30., show_value = true)) cm
 
-Temperature: $(@bind temperature PlutoUI.Slider(950.:1450., default=1000., show_value = true)) K
+Temperature: $(@bind temperature PlutoUI.Slider(900.:1400., default=1000., show_value = true)) K
 
 Mole Fraction of SiCl₄: $(@bind y_SiCl₄ PlutoUI.Slider(0.:0.05:1., default=0.5, show_value = true)) 
 
 Total System Pressure: $(@bind Psys PlutoUI.Slider(1.:1:760., default=760., show_value = true)) mmHg
 
-Maximum Run Time: $(@bind t_max PlutoUI.Slider(60.:60.:7200., default=3600., show_value = true)) s
+Maximum Run Time: $(@bind t_max_min PlutoUI.Slider(1.:1:9600., default=10., show_value = true)) min
 """
+
+# ╔═╡ 4016352d-ab26-4385-ba05-e57416df55c3
+t_max = 60 * t_max_min;
 
 # ╔═╡ 44189ce2-83df-4b77-8a5d-44383838d2ee
 begin
-	sol = run_simulation(y_SiCl₄, Psys, temperature, t_max)
-	# calculate the film thickness from the simulation data
-	δ = film_thickness.(sol[:, "Si_dep(t)"], sol[:, "Si_etch(t)"])
+    sol = run_simulation(y_SiCl₄, Psys, temperature, t_max)
+    # calculate the film thickness from the simulation data
+    δ = film_thickness.(sol[:, "Si_dep(t)"], sol[:, "Si_etch(t)"])
 end;
 
 # ╔═╡ 35d612fb-b859-42b1-9ea2-ae90ad01dfb8
@@ -112,7 +136,7 @@ begin
 md"""
 **Maximum Film Thickness**: $(round(δ[max_idx], digits=2)) μm
 
-**Time to Maximum Thickness**: $(sol[max_idx, :timestamp]) s
+**Time to Maximum Thickness**: $(sol[max_idx, :timestamp] / 3600) hr
 """
 end
 
@@ -155,15 +179,15 @@ begin
     
     local fig = Figure()
     local ax = Axis(
-		fig[1,1],
-		title = "Si Film Growth Rate over Time",
-		ylabel = "δ Growth Rate [μm/s]",
-		xlabel = "Time [s]"
-	)
+        fig[1,1],
+        title = "Si Film Growth Rate over Time",
+        ylabel = "δ Growth Rate [μm/s]",
+        xlabel = "Time [s]"
+    )
 
     lines!(ax, sol[:, :timestamp], dδ)
 
-	idx = findfirst(dδ .<= 0.0) # find position, if any, where dδ = 0
+    idx = findfirst(dδ .<= 0.0) # find position, if any, where dδ = 0
     if ! isnothing(idx)
         vlines!(ax, sol[idx, :timestamp], linestyle = :dash, color = (:red,0.5))
     end
@@ -206,30 +230,30 @@ begin
         local δ = film_thickness.(sol[:, "Si_dep(t)"], sol[:, "Si_etch(t)"])
 
         non_negative = δ .> 0.0 # find all values in δ that aren't negative
-		if length(δ[non_negative]) > 0 # avoid iteration over empty collection
-	        max_δ[i] = maximum(δ[non_negative]) # record max
-		end
+        if length(δ[non_negative]) > 0 # avoid iteration over empty collection
+            max_δ[i] = maximum(δ[non_negative]) # record max
+        end
 
         lines!(
             sol[non_negative, :timestamp], 
-			δ[non_negative], 
+            δ[non_negative], 
             color=ColorSchemes.viridis[round(Int, 256 * i / length(temp_span))]
         )
     end
 
     Colorbar(
-		fig[1,2], 
-		limits=(temp_span[1], temp_span[end]), 
-		colormap=:viridis,
-		label="Reactor Temperature [K]"
-	)
+        fig[1,2], 
+        limits=(temp_span[1], temp_span[end]), 
+        colormap=:viridis,
+        label="Reactor Temperature [K]"
+    )
 
     local ax2=Axis(
-		fig[2,:],
+        fig[2,:],
         title="",
         xlabel="Temperature [K]",
         ylabel="Maximum δ [μm]"
-	)
+    )
 
     scatter!(ax2, temp_span, max_δ)
 
@@ -280,14 +304,14 @@ md"
 begin
     local fig = Figure()
     local ax = Axis(
-		fig[1,1],
-		title="Growth Rate versus SiCl₄ Mole Fraction, T = $temperature [K]",
-		ylabel="Film Growth Rate [μm/min]",
-		xlabel="Mole Fraction of SiCl₄",
-		xreversed=true
-	)
+        fig[1,1],
+        title="Growth Rate versus SiCl₄ Mole Fraction, T = $temperature [K]",
+        ylabel="Film Growth Rate [μm/min]",
+        xlabel="Mole Fraction of SiCl₄",
+        xreversed=true
+    )
 
-	gaseous_species = Symbol.(["SiCl₄(t)", "SiCl₂(t)", "H₂(t)", "HCl(t)"])
+    gaseous_species = Symbol.(["SiCl₄(t)", "SiCl₂(t)", "H₂(t)", "HCl(t)"])
     all_gases = map(r -> sum([r[x] for x in gaseous_species]), eachrow(sol))
     
     molfrac_SiCl4 = sol[:, gaseous_species[1]] ./ all_gases
@@ -296,11 +320,14 @@ begin
 
     local idx = findfirst(dδ .< 0)
     if ! isnothing(idx)
-        vlines!(ax, y_SiCl₄[idx], linestyle = :dash, color = (:red,0.5))
+        vlines!(ax, molfrac_SiCl4[idx], linestyle = :dash, color = (:red,0.5))
     end
     
     fig
 end
+
+# ╔═╡ b5b8fe35-8c55-4b4d-a8c3-c1e87af38835
+
 
 # ╔═╡ Cell order:
 # ╟─2ec89215-0634-498c-94ee-389b9b8d7034
@@ -315,12 +342,18 @@ end
 # ╟─05db1f52-1c87-465f-8b1b-25e45aed6d0b
 # ╟─b7222499-de8e-452f-ab52-e1a443109147
 # ╠═44189ce2-83df-4b77-8a5d-44383838d2ee
+# ╟─0f3ddc3f-b14d-4457-9409-bcaed1737500
+# ╠═b99e33dc-c82b-4cd0-9da1-16eca8c4aa90
+# ╟─68f12708-a5b2-4765-be56-9103cbb69c16
+# ╠═13a069be-9b1a-48c1-b289-83671207d087
+# ╠═d747dbb9-caf9-4fce-85b8-a0698c749f32
 # ╟─b9e889d9-5edb-498e-b560-fd699fe2de73
+# ╟─4016352d-ab26-4385-ba05-e57416df55c3
 # ╟─35d612fb-b859-42b1-9ea2-ae90ad01dfb8
 # ╟─abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
 # ╟─fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
 # ╟─23d028df-dbd7-4188-ae74-7da3c071e549
-# ╠═e702092a-0b2e-475e-8dc1-51308be65c64
+# ╟─e702092a-0b2e-475e-8dc1-51308be65c64
 # ╟─7b58b65f-a35a-461e-a4b6-4cb16646642e
 # ╟─a347066c-c48e-42e9-a051-ac530d9bb7eb
 # ╟─96528e86-2a83-4b59-a412-de66b4475d52
@@ -328,3 +361,4 @@ end
 # ╟─4e829cbd-3d8c-4ef6-8898-1af9443f01ac
 # ╟─df6821d6-9c47-4d12-a62f-1b458c5ac6ba
 # ╠═ef49613a-22c3-4775-b903-665544c77bdf
+# ╠═b5b8fe35-8c55-4b4d-a8c3-c1e87af38835
