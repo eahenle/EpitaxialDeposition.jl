@@ -26,7 +26,6 @@ PARAMS = Dict{Symbol, Union{Dict{Symbol, Float64}, Float64}}(
     ),
     :reactor => Dict{Symbol, Float64}( # reactor parameters
         :volume         => 10.,
-        :temperature    => 1200.,
         :wafer_diameter => 30.
     ),
     :Δt => 0.05 # simulation time step, also used in calculating time-derivative of film thickness
