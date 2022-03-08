@@ -9,7 +9,7 @@ begin
 	import Pkg; using Pkg
 	Pkg.add(url="https://github.com/simulkade/JFVMvis.jl")
 	Pkg.add(url="https://github.com/simulkade/JFVM.jl")
-	Pkg.add(["Dierckx", "CairoMakie", "PyPlot", "LsqFit"])
+	# Pkg.add(["Dierckx", "CairoMakie", "PyPlot", "LsqFit"])
 	
 end
 
@@ -37,6 +37,7 @@ Values for σ and a parameter ϵ are tabulated in the book referenced, Appendix 
 2. ``D_{AB} = \frac{0.001T^{1.75}(\frac{1}{M_A}+\frac{1}{M_B})^{1/2}}{P [(\Sigma \nu_i)_A ^{1/3}+(\Sigma \nu_i)_B ^{1/3}]^2}  ``
 - ``\nu_i`` is an incremental quantity dependent on a molecule's functional groups, with values tabulated in Table 24.3 of the textbook
 
+We will use method 1, using critical parameters (Tc, Pc) to estimate the collision diameter and energy ϵ
 
 """
 
@@ -44,7 +45,6 @@ Values for σ and a parameter ϵ are tabulated in the book referenced, Appendix 
 #= TO-DO:
 
 2) Add something more to the c₀ for each species (most likely values exported from Catalyst)
-3) Develop more rigorous diffusion models -- modifications for polar compounds (which the first model shown doesn't like), and for mixtures
 
 =#
 
@@ -54,29 +54,6 @@ begin
 	const κ = 1.38e-16 # [ergs/K]
 	const T = 1200 # [K]
 	const P = 1 # [atm]
-end
-
-# ╔═╡ f34c6b52-6a94-41b4-95d2-63788595e0cc
-appendix_K = Dict(:kTϵ => [1.75, 1.80, 1.85], :Ω => [1.128, 1.116, 1.105])
-
-# ╔═╡ bec21842-2976-4e3b-8efa-bd8582ae6d30
-function interpolate_Ω!(x_1 , y_1, x_2, y_2, y_target)
-
-	# using known values of Ω, calculate a value for kT/ϵ
-	x_target = x_1 - (x_1 - x_2) / (y_1 - y_2) * (y_1 - y_target)
-	
-	return x_target
-	
-end
-
-# ╔═╡ ee305176-a8a4-480b-aa86-a8a62e1ee4a8
-function interpolate_kTϵ!(x_1, y_1, x_2, y_2, x_target)
-
-	# using known values of kT/ϵ, calculate a value for Ω
-	y_target = y_1 - (y_1 - y_2) / (x_1 - x_2) * (x_1 - x_target)
-	
-	return y_target
-	
 end
 
 # ╔═╡ 457a34ad-8514-4c6a-b16b-c94e6515ba40
@@ -129,14 +106,14 @@ begin
 	1.65 1.264 1.153 4.30 0.9553 0.8694
 	1.70 1.248 1.140 4.40 0.9507 0.8652
 	4.50 0.9464 0.8610 10.0 0.8242 0.7424
-4.60 0.9422 0.8568 20.0 0.7432 0.6640
-4.70 0.9382 0.8530 30.0 0.7005 0.6232
-4.80 0.9343 0.8492 40.0 0.6718 0.5960
-4.90 0.9305 0.8456 50.0 0.6504 0.5756
-5.0 0.9269 0.8422 60.0 0.6335 0.5596
-6.0 0.8963 0.8124 70.0 0.6194 0.5464
-7.0 0.8727 0.7896 80.0 0.6076 0.5352
-8.0 0.8538 0.7712 90.0 0.5973 0.5256];
+	4.60 0.9422 0.8568 20.0 0.7432 0.6640
+	4.70 0.9382 0.8530 30.0 0.7005 0.6232
+	4.80 0.9343 0.8492 40.0 0.6718 0.5960
+	4.90 0.9305 0.8456 50.0 0.6504 0.5756
+	5.0 0.9269 0.8422 60.0 0.6335 0.5596
+	6.0 0.8963 0.8124 70.0 0.6194 0.5464
+	7.0 0.8727 0.7896 80.0 0.6076 0.5352
+	8.0 0.8538 0.7712 90.0 0.5973 0.5256];
 
 	
 	b = vcat(a[:, [1, 3]], a[:, [4,6]]);
@@ -159,6 +136,8 @@ begin
 	
 	fit = curve_fit(model, xdata, ydata, p0);
 
+	collision_interp(x) = model(x, fit.param)
+
 end
 
 # ╔═╡ 6e4c3904-6543-41e9-a862-22cb749ed178
@@ -178,12 +157,6 @@ begin
 	fig
 
 end
-
-# ╔═╡ e73e4dfb-63fa-406f-9eb3-dbe1e156fb6b
-collision_interp(x) = model(x, fit.param)
-
-# ╔═╡ f995ccf4-8b36-4528-a118-5f88cef4fd83
-collision_interp(κ*T/1.65e-14) # reasonable accuracy compared to data table, a linear interpolater gives us "0.7420)
 
 # ╔═╡ c26da7bb-b415-4d74-9dd2-89c675724874
 function DAB(species1::Symbol, species2::Symbol, T, P)
@@ -214,31 +187,8 @@ D_SiCl₄= DAB(:SiCl₄, :H₂, T, P)
 # ╔═╡ 9912d690-5dd6-45d9-94cf-8e0ca301fd29
 D_HCl = DAB(:HCl, :H₂, T, P)
 
-# ╔═╡ f73c1d88-1605-4445-9c9c-ddc16937cc48
-function Dab_nonpolar(species1::Symbol, species2::Symbol, T, P)
-
-	# Binary diffusion coefficient of species A (1) through species B (2)
-	
-	σ_AB = (Params[:σ][species1] + Params[:σ][species2]) / 2
-	
-	ϵ_AB = sqrt(Params[:ϵ][species1] * Params[:ϵ][species2])
-
-
-	Ω = 0.73 # estimated from Appendix K, didn't want to write an interpolation calculator at the time
-
-
-	return 0.001858 * T^(3/2) * sqrt(1 / Params[:MW][species1] + 1 / Params[:MW][species2]) / P / σ_AB^2 / Ω # [cm²/s]
-	
-end
-
-# ╔═╡ d0374368-0283-40f1-a55c-133eb1cff7e8
-function Dab_polar(species1::Symbol, species2::Symbol, T, P)
-
-	ν_species1 = sum(Params[:ν][species1])
-	ν_species2 = sum(Params[:ν][species2])
-
-	return 0.001 * T^(1.75) * sqrt(1 / Params[:MW][species1] + 1 / Params[:MW][species2]) / P / (ν_species1^(1/3) + ν_species2^(1/3))^2 # [cm²/s]
-end
+# ╔═╡ ac05f8e1-e284-48d0-8c81-c9b7677d8d52
+D_H₂ = DAB(:H₂, :H₂, T, P)
 
 # ╔═╡ 680313b8-d39c-428b-adb5-a10dee051860
 md"""
@@ -346,7 +296,7 @@ function plot_species_profile!(species::String, D::Float64, m::MeshStructure, c�
 end
 
 # ╔═╡ 20896c36-caaf-4dea-b5f2-0b71af22af79
-sol1, fig1 = plot_species_profile!("SiCl₄", D_SiCl₄, m, 2.0);
+sol1, fig1 = plot_species_profile!("SiCl₄", D_SiCl₄, m, 60.0);
 
 # ╔═╡ 31b2a389-7c6b-4313-b132-89f97876fa2f
 sol1.value
@@ -363,24 +313,46 @@ sol2.value
 # ╔═╡ b34d9e43-357f-45d0-8406-42a55b116bee
 fig2
 
+# ╔═╡ f73c1d88-1605-4445-9c9c-ddc16937cc48
+function Dab_nonpolar(species1::Symbol, species2::Symbol, T, P)
+
+	# Binary diffusion coefficient of species A (1) through species B (2)
+	
+	σ_AB = (Params[:σ][species1] + Params[:σ][species2]) / 2
+	
+	ϵ_AB = sqrt(Params[:ϵ][species1] * Params[:ϵ][species2])
+
+
+	Ω = 0.73 # estimated from Appendix K, didn't want to write an interpolation calculator at the time
+
+
+	return 0.001858 * T^(3/2) * sqrt(1 / Params[:MW][species1] + 1 / Params[:MW][species2]) / P / σ_AB^2 / Ω # [cm²/s]
+	
+end
+
+# ╔═╡ d0374368-0283-40f1-a55c-133eb1cff7e8
+function Dab_polar(species1::Symbol, species2::Symbol, T, P)
+
+	ν_species1 = sum(Params[:ν][species1])
+	ν_species2 = sum(Params[:ν][species2])
+
+	return 0.001 * T^(1.75) * sqrt(1 / Params[:MW][species1] + 1 / Params[:MW][species2]) / P / (ν_species1^(1/3) + ν_species2^(1/3))^2 # [cm²/s]
+end
+
 # ╔═╡ Cell order:
 # ╠═d6b3a9fa-3c6d-422d-afff-30e49502e145
 # ╠═d2eb8940-9b16-11ec-1d74-3bc00f5f950f
-# ╟─6e4302dc-b2ce-4d8f-809b-078f2c39c2dc
+# ╠═6e4302dc-b2ce-4d8f-809b-078f2c39c2dc
 # ╠═84ecce92-8d75-4a67-8f71-ca63a6da1137
 # ╠═e137888b-fc7e-4ddb-b25e-3c53bb8ee23a
-# ╠═f34c6b52-6a94-41b4-95d2-63788595e0cc
-# ╠═bec21842-2976-4e3b-8efa-bd8582ae6d30
-# ╠═ee305176-a8a4-480b-aa86-a8a62e1ee4a8
 # ╠═457a34ad-8514-4c6a-b16b-c94e6515ba40
 # ╠═1333c9f1-6202-4df9-9b09-4d19f2b91d65
 # ╟─6e4c3904-6543-41e9-a862-22cb749ed178
 # ╠═fb36836c-bc8c-4a5d-812b-5e8eceaed845
-# ╠═e73e4dfb-63fa-406f-9eb3-dbe1e156fb6b
-# ╠═f995ccf4-8b36-4528-a118-5f88cef4fd83
 # ╠═c26da7bb-b415-4d74-9dd2-89c675724874
 # ╠═00f98dbf-4df2-4972-8f3e-15425b735077
 # ╠═9912d690-5dd6-45d9-94cf-8e0ca301fd29
+# ╠═ac05f8e1-e284-48d0-8c81-c9b7677d8d52
 # ╟─680313b8-d39c-428b-adb5-a10dee051860
 # ╠═7c259d4c-122c-4270-ad64-185b09be4a2f
 # ╠═20896c36-caaf-4dea-b5f2-0b71af22af79
@@ -389,7 +361,7 @@ fig2
 # ╠═21a4c01a-a92c-456f-86f7-663d576845e2
 # ╠═694044ed-a874-44d8-a2af-abf3a9cd50e8
 # ╠═b34d9e43-357f-45d0-8406-42a55b116bee
-# ╟─c3e3ebfd-0722-4cc0-b647-15e10ef93a82
+# ╠═c3e3ebfd-0722-4cc0-b647-15e10ef93a82
 # ╟─6a944590-be5a-498f-aaf0-8966f610dc61
 # ╟─f73c1d88-1605-4445-9c9c-ddc16937cc48
 # ╟─d0374368-0283-40f1-a55c-133eb1cff7e8
