@@ -44,36 +44,39 @@ function trans_diff_dirichlet(m::MeshStructure; N=N_steps)
 
 	# Define our boundary conditions. Package/function defaults yield Neumann boundary conditions, though Dirichlet and Robin conditions are also supported, and each cell face can have a unique boundary condition
 	BC = createBC(m)
-	
-	BC.left.a[:] = BC.right.a[:] .= 0.0
 
-	BC.left.b[:] = BC.right.b[:] .= 12.0
+	# left and right boundary conditions for each coefficient in the boundary condition expression 
+	
+	#link: https://nbviewer.org/github/simulkade/JFVM.jl/blob/master/examples/jfvm_tutorial.ipynb
+	BC.left.a[:] .= 0.0 
+	BC.right.a[:] .= 0.0
+
+	BC.left.b[:] .= 12.0
+	BC.right.b[:] .= 12.0
 
 	BC.left.c[:] .= 5.0 
 	BC.right.c[:] .= 0.0
 
-	######
+	# top and bottom boundary conditions for each coefficient
+	BC.top.a[1,:] .= 1.0 
+	BC.bottom.a[1,:] .= 1.0
 
-	# top and bottom boundary ca
-	BC.top.a[1,:] .= 5.0 
-	BC.bottom.a[1,:] .= 5.0
+	BC.top.b[1,:] .= 1.0 
+	BC.bottom.b[1,:] .= 1.0
 
-	BC.top.b[1,:] .= 5.0 
-	BC.bottom.b[1,:] .= 5.0
-
-	BC.top.c[1,:] .= 5.0 
-	BC.bottom.c[1,:] .= 5.0 
+	BC.top.c[1,:] .= 1.0 
+	BC.bottom.c[1,:] .= 1.0 
 		
 
 	
 	
 	# Give a value for the diffusion coefficient
-	D = 120 # units?
+	D = 12 # units?
 	D_cell = createCellVariable(m, D) # assign the diffusion coefficient as a variable to each cell
 	D_face = geometricMean(D_cell) # choose an averaging scheme, for how the average diffusion coefficient on a cell face is calculated
 
 	# Initialize the value of concentration
-	c₀ = 0.0
+	c₀ = 6.0
 	c_old = createCellVariable(m, c₀, BC)
 	
 	# Discretize the problem and build our solution
@@ -116,11 +119,11 @@ begin
 				ylabel = "y-direction",
 				title = "Concentration Profile")
 		
-	#xlims!(0, Lx)
-	#ylims!(0, Ly)
-	heatmap!(c.value)#, levels = 0:0.1:1) # contourf takes in a matrix and fills with colors
+	heatmap!(c.value)
 
-	Colorbar(fig[1,2])
+	Colorbar(fig[1,2], limits = (0, maximum(c.value)), colormap = :viridis,
+			label = "Concentration [mol/L]")
+
 	fig
 
 end
