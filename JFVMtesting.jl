@@ -21,7 +21,8 @@ md"""
 ### Diffusion Coefficients ``\mathscr{D}``
 Here we'll start with gas phase binary diffusion coefficients for each species (in hydrogen), and later consider mixtures.
 
-The first correlation is for dilute, nonpolar, spherical, nonreactive gases (Fundamentals of Momentum, Heat, and Mass Transfer 6th Ed, Welty et al.):
+The first correlation proposed by Hirschfelder, Bird, and Spotz is for dilute, **nonpolar**, spherical, **nonreactive** gases (Fundamentals of Momentum, Heat, and Mass Transfer 6th Ed, Welty et al.). The second correlation is a modification by Fuller, Schettler, and Giddings, which allow for evaluating diffusivity when Lennard-Jones parameteres aren't available:
+
 1. `` D_{AB}=\frac{0.001858T^{3/2}(\frac{1}{M_A}+\frac{1}{M_B})^{1/2}}{P \sigma^2_{AB} \Omega_D} `` with:
 
 - D = diffusion of A through B [cm²/s]
@@ -33,6 +34,10 @@ The first correlation is for dilute, nonpolar, spherical, nonreactive gases (Fun
 
 Values for σ and a parameter ϵ are tabulated in the book referenced, Appendix K
 
+2. ``D_{AB} = \frac{0.001T^{1.75}(\frac{1}{M_A}+\frac{1}{M_B})^{1/2}}{P [(\Sigma \nu_i)_A ^{1/3}+(\Sigma \nu_i)_B ^{1/3}]^2}  ``
+- ``\nu_i`` is an incremental quantity dependent on a molecule's functional groups, with values tabulated in Table 24.3 of the textbook
+
+
 """
 
 # ╔═╡ 84ecce92-8d75-4a67-8f71-ca63a6da1137
@@ -40,6 +45,7 @@ Values for σ and a parameter ϵ are tabulated in the book referenced, Appendix 
 
 1) Create linear interpolator to get values of Ω when in between two values from the table in Appendix K
 2) Add something more to the c₀ for each species (most likely values exported from Catalyst)
+3) Develop more rigorous diffusion models -- modifications for polar compounds (which the first model shown doesn't like), and for mixtures
 
 =#
 
@@ -51,37 +57,76 @@ begin
 	const P = 1 # [atm]
 end
 
+# ╔═╡ f34c6b52-6a94-41b4-95d2-63788595e0cc
+appendix_K = Dict(:kTϵ => [1.75, 1.80, 1.85], :Ω => [1.128, 1.116, 1.105])
+
+# ╔═╡ bec21842-2976-4e3b-8efa-bd8582ae6d30
+function interpolate_Ω!(x_1 , y_1, x_2, y_2, y_target)
+
+	# using known values of Ω, calculate a value for kT/ϵ
+	x_target = x_1 - (x_1 - x_2) / (y_1 - y_2) * (y_1 - y_target)
+	
+	return x_target
+	
+end
+
+# ╔═╡ ee305176-a8a4-480b-aa86-a8a62e1ee4a8
+function interpolate_kTϵ!(x_1, y_1, x_2, y_2, x_target)
+
+	# using known values of kT/ϵ, calculate a value for Ω
+	y_target = y_1 - (y_1 - y_2) / (x_1 - x_2) * (x_1 - x_target)
+	
+	return y_target
+	
+end
+
+# ╔═╡ cb705cc5-23d3-4476-99e0-9542572b9e25
+interpolate_Ω!(1.128, 1.75, 1.116, 1.80, 1.84)
+
+# ╔═╡ 41e99faa-bba3-4bd2-8456-78a4c3e0b048
+interpolate_kTϵ!(1.128, 1.75, 1.116, 1.80, 1.1064)
+
 # ╔═╡ 457a34ad-8514-4c6a-b16b-c94e6515ba40
 begin
-	MW_dict = Dict("SiCl₄" => 169.9, "H₂" => 2.0, "HCl" => 36.5) # [g/gmol]
-	σ_dict = Dict("SiCl₄" => 5.08, "H₂" => 2.968, "HCl" => 3.305) # [Å]
-	ϵ_dict = Dict("SiCl₄" => 358*k, "H₂" => 33.3*k, "HCl" => 360*k) # [ergs]
+	MW_dict = Dict(:SiCl₄ => 169.9, :H₂ => 2.0, :HCl => 36.5, :SiCl2 => 99) # [g/gmol]
+	σ_dict = Dict(:SiCl₄ => 5.08, :H₂ => 2.968, :HCl => 3.305) # [Å]
+	ϵ_dict = Dict(:SiCl₄ => 358*k, :H₂ => 33.3*k, :HCl => 360*k) # [ergs]
+	ν_dict = Dict(:HCl => [19.5, 1.98], :H₂ => 7.07)
 
-	Params = Dict("MW" => MW_dict, "σ" => σ_dict, "ϵ" => ϵ_dict) # store all data in a single dictionary
+	Params = Dict(:MW => MW_dict, :σ => σ_dict, :ϵ => ϵ_dict, :ν => ν_dict) # store all data in a single dictionary
 end
 
 # ╔═╡ f73c1d88-1605-4445-9c9c-ddc16937cc48
-function Dab(species1::String, species2::String, T, P)
+function Dab_nonpolar(species1::Symbol, species2::Symbol, T, P)
 
 	# Binary diffusion coefficient of species A (1) through species B (2)
 	
-	σ_AB = (Params["σ"][species1] + Params["σ"][species2]) / 2
+	σ_AB = (Params[:σ][species1] + Params[:σ][species2]) / 2
 	
-	ϵ_AB = sqrt(Params["ϵ"][species1] * Params["ϵ"][species2])
+	ϵ_AB = sqrt(Params[:ϵ][species1] * Params[:ϵ][species2])
 
 
 	Ω = 0.73 # estimated from Appendix K, didn't want to write an interpolation calculator at the time
 
 
-	return 0.001858 * T^(3/2) * sqrt(1 / Params["MW"][species1] + 1 / Params["MW"][species2]) / P / σ_AB^2 / Ω # [cm²/s]
+	return 0.001858 * T^(3/2) * sqrt(1 / Params[:MW][species1] + 1 / Params[:MW][species2]) / P / σ_AB^2 / Ω # [cm²/s]
 	
 end
 
+# ╔═╡ d0374368-0283-40f1-a55c-133eb1cff7e8
+function Dab_polar(species1::Symbol, species2::Symbol, T, P)
+
+	ν_species1 = sum(Params[:ν][species1])
+	ν_species2 = sum(Params[:ν][species2])
+
+	return 0.001 * T^(1.75) * sqrt(1 / Params[:MW][species1] + 1 / Params[:MW][species2]) / P / (ν_species1^(1/3) + ν_species2^(1/3))^2 # [cm²/s]
+end
+
 # ╔═╡ c79cb0cb-10dd-414f-89f0-f5866fd5c72b
-D_SiCl₄ = Dab("SiCl₄", "H₂",T,P)
+D_SiCl₄ = Dab_nonpolar(:SiCl₄, :H₂, T,P)
 
 # ╔═╡ 98bc75ac-98c6-43aa-9753-cd960107b44b
-D_HCl = Dab("HCl", "H₂",T,P)
+D_HCl = Dab_polar(:HCl, :H₂, T,P)
 
 # ╔═╡ 7c259d4c-122c-4270-ad64-185b09be4a2f
 begin
@@ -207,8 +252,14 @@ fig2
 # ╟─6e4302dc-b2ce-4d8f-809b-078f2c39c2dc
 # ╠═84ecce92-8d75-4a67-8f71-ca63a6da1137
 # ╠═e137888b-fc7e-4ddb-b25e-3c53bb8ee23a
+# ╠═f34c6b52-6a94-41b4-95d2-63788595e0cc
+# ╠═bec21842-2976-4e3b-8efa-bd8582ae6d30
+# ╠═ee305176-a8a4-480b-aa86-a8a62e1ee4a8
+# ╠═cb705cc5-23d3-4476-99e0-9542572b9e25
+# ╠═41e99faa-bba3-4bd2-8456-78a4c3e0b048
 # ╠═457a34ad-8514-4c6a-b16b-c94e6515ba40
 # ╠═f73c1d88-1605-4445-9c9c-ddc16937cc48
+# ╠═d0374368-0283-40f1-a55c-133eb1cff7e8
 # ╠═c79cb0cb-10dd-414f-89f0-f5866fd5c72b
 # ╠═98bc75ac-98c6-43aa-9753-cd960107b44b
 # ╠═7c259d4c-122c-4270-ad64-185b09be4a2f
