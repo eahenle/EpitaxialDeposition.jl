@@ -43,7 +43,6 @@ Values for σ and a parameter ϵ are tabulated in the book referenced, Appendix 
 # ╔═╡ 84ecce92-8d75-4a67-8f71-ca63a6da1137
 #= TO-DO:
 
-1) Create linear interpolator to get values of Ω when in between two values from the table in Appendix K
 2) Add something more to the c₀ for each species (most likely values exported from Catalyst)
 3) Develop more rigorous diffusion models -- modifications for polar compounds (which the first model shown doesn't like), and for mixtures
 
@@ -79,12 +78,6 @@ function interpolate_kTϵ!(x_1, y_1, x_2, y_2, x_target)
 	return y_target
 	
 end
-
-# ╔═╡ cb705cc5-23d3-4476-99e0-9542572b9e25
-interpolate_Ω!(1.128, 1.75, 1.116, 1.80, 1.76)
-
-# ╔═╡ 41e99faa-bba3-4bd2-8456-78a4c3e0b048
-interpolate_kTϵ!(1.128, 1.75, 1.116, 1.80, 1.1064)
 
 # ╔═╡ 457a34ad-8514-4c6a-b16b-c94e6515ba40
 begin
@@ -143,32 +136,28 @@ begin
 5.0 0.9269 0.8422 60.0 0.6335 0.5596
 6.0 0.8963 0.8124 70.0 0.6194 0.5464
 7.0 0.8727 0.7896 80.0 0.6076 0.5352
-8.0 0.8538 0.7712 90.0 0.5973 0.5256]
+8.0 0.8538 0.7712 90.0 0.5973 0.5256];
 
 	
-	b = vcat(a[:, [1, 3]], a[:, [4,6]])
+	b = vcat(a[:, [1, 3]], a[:, [4,6]]);
+
+	# order the x/y data via some mask which orders the array in increasing order
+	sp = sortperm(b[:, 1])
+	
+	xdata = b[:, 1][sp][60:end, 1] # values of κT/ϵ
+	
+	ydata = b[:, 2][sp][60:end, 1] # values of Ω
+	
 end
-
-# ╔═╡ 989cc1b3-9026-4f95-a4e7-d021188d23a8
-sp = sortperm(b[:, 1])
-
-# ╔═╡ 2f7b245d-f9e0-443d-a16e-53c18f882134
-xdata = b[:, 1][sp][60:end, 1]
-
-# ╔═╡ 0b2e555a-84f8-40c2-9e94-6ca5f393073b
-ydata = b[:, 2][sp][60:end, 1]
 
 # ╔═╡ fb36836c-bc8c-4a5d-812b-5e8eceaed845
 begin
-
-	# @. model(x,p) = p[1]*log(x*p[2])^(-1) # inverse log model
-	# @. model(x,p) = p[1]*x^(-2) + p[2] # quadratic model
+	
 	@. model(x,p) = p[1] / (x*p[2] + p[3]) + p[4] # inverse x model
-
-	# p0 = [0.25, 0.75]
+	
 	p0 = [0.25, 0.75, 0.5, 0.5]
-
-	fit = curve_fit(model, xdata, ydata, p0)
+	
+	fit = curve_fit(model, xdata, ydata, p0);
 
 end
 
@@ -179,6 +168,7 @@ begin
 	
 	fig = Figure()
 	ax = Axis(fig[1,1],
+		title = "Least Squares Fit for Linear Interpolation",
 		ylabel = "Collision Integral Ω",
 		xlabel = "κT/ϵ")
 
@@ -190,7 +180,10 @@ begin
 end
 
 # ╔═╡ e73e4dfb-63fa-406f-9eb3-dbe1e156fb6b
-modelfit(x) = model(x, fit.param)
+collision_interp(x) = model(x, fit.param)
+
+# ╔═╡ f995ccf4-8b36-4528-a118-5f88cef4fd83
+collision_interp(κ*T/1.65e-14) # reasonable accuracy compared to data table, a linear interpolater gives us "0.7420)
 
 # ╔═╡ c26da7bb-b415-4d74-9dd2-89c675724874
 function DAB(species1::Symbol, species2::Symbol, T, P)
@@ -207,9 +200,19 @@ function DAB(species1::Symbol, species2::Symbol, T, P)
 	σ12 = (σ1 + σ2) / 2
 	ϵ12 = sqrt(ϵ1 * ϵ2)
 
+	# calculate the value of κT/ϵ that we need to interpolate between
+	Ω = collision_interp(κ*T/ϵ12)
 	
-
+	
+	return 0.001858 * T^(3/2) * sqrt(1 / Params[:MW][species1] + 1 / Params[:MW][species2]) / P / σ12^2 / Ω # [cm²/s]
+	
 end
+
+# ╔═╡ 00f98dbf-4df2-4972-8f3e-15425b735077
+D_SiCl₄= DAB(:SiCl₄, :H₂, T, P)
+
+# ╔═╡ 9912d690-5dd6-45d9-94cf-8e0ca301fd29
+D_HCl = DAB(:HCl, :H₂, T, P)
 
 # ╔═╡ f73c1d88-1605-4445-9c9c-ddc16937cc48
 function Dab_nonpolar(species1::Symbol, species2::Symbol, T, P)
@@ -237,11 +240,10 @@ function Dab_polar(species1::Symbol, species2::Symbol, T, P)
 	return 0.001 * T^(1.75) * sqrt(1 / Params[:MW][species1] + 1 / Params[:MW][species2]) / P / (ν_species1^(1/3) + ν_species2^(1/3))^2 # [cm²/s]
 end
 
-# ╔═╡ c79cb0cb-10dd-414f-89f0-f5866fd5c72b
-D_SiCl₄ = Dab_nonpolar(:SiCl₄, :H₂, T,P)
-
-# ╔═╡ 98bc75ac-98c6-43aa-9753-cd960107b44b
-D_HCl = Dab_polar(:HCl, :H₂, T,P)
+# ╔═╡ 680313b8-d39c-428b-adb5-a10dee051860
+md"""
+## Finite Volume Method for Showing Concentration Gradients
+"""
 
 # ╔═╡ 7c259d4c-122c-4270-ad64-185b09be4a2f
 begin
@@ -370,21 +372,16 @@ fig2
 # ╠═f34c6b52-6a94-41b4-95d2-63788595e0cc
 # ╠═bec21842-2976-4e3b-8efa-bd8582ae6d30
 # ╠═ee305176-a8a4-480b-aa86-a8a62e1ee4a8
-# ╠═cb705cc5-23d3-4476-99e0-9542572b9e25
-# ╠═41e99faa-bba3-4bd2-8456-78a4c3e0b048
 # ╠═457a34ad-8514-4c6a-b16b-c94e6515ba40
 # ╠═1333c9f1-6202-4df9-9b09-4d19f2b91d65
-# ╠═989cc1b3-9026-4f95-a4e7-d021188d23a8
-# ╠═2f7b245d-f9e0-443d-a16e-53c18f882134
-# ╠═0b2e555a-84f8-40c2-9e94-6ca5f393073b
-# ╠═6e4c3904-6543-41e9-a862-22cb749ed178
-# ╠═e73e4dfb-63fa-406f-9eb3-dbe1e156fb6b
+# ╟─6e4c3904-6543-41e9-a862-22cb749ed178
 # ╠═fb36836c-bc8c-4a5d-812b-5e8eceaed845
+# ╠═e73e4dfb-63fa-406f-9eb3-dbe1e156fb6b
+# ╠═f995ccf4-8b36-4528-a118-5f88cef4fd83
 # ╠═c26da7bb-b415-4d74-9dd2-89c675724874
-# ╠═f73c1d88-1605-4445-9c9c-ddc16937cc48
-# ╟─d0374368-0283-40f1-a55c-133eb1cff7e8
-# ╠═c79cb0cb-10dd-414f-89f0-f5866fd5c72b
-# ╠═98bc75ac-98c6-43aa-9753-cd960107b44b
+# ╠═00f98dbf-4df2-4972-8f3e-15425b735077
+# ╠═9912d690-5dd6-45d9-94cf-8e0ca301fd29
+# ╟─680313b8-d39c-428b-adb5-a10dee051860
 # ╠═7c259d4c-122c-4270-ad64-185b09be4a2f
 # ╠═20896c36-caaf-4dea-b5f2-0b71af22af79
 # ╠═31b2a389-7c6b-4313-b132-89f97876fa2f
@@ -394,3 +391,5 @@ fig2
 # ╠═b34d9e43-357f-45d0-8406-42a55b116bee
 # ╟─c3e3ebfd-0722-4cc0-b647-15e10ef93a82
 # ╟─6a944590-be5a-498f-aaf0-8966f610dc61
+# ╟─f73c1d88-1605-4445-9c9c-ddc16937cc48
+# ╟─d0374368-0283-40f1-a55c-133eb1cff7e8
