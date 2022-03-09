@@ -2,7 +2,7 @@
 
 ## Chemical Reactors Term Project
 
-### Ian Harrescou and Adrian Henle
+### Ian Harreschou and Adrian Henle
 
 #### Purpose
 
