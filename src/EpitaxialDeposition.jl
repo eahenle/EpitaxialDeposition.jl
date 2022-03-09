@@ -1,6 +1,6 @@
 module EpitaxialDeposition
 
-using DataFrames, LsqFit, Memoize, Reexport
+using CairoMakie, DataFrames, LsqFit, Memoize, Reexport
 @reexport using Catalyst, DifferentialEquations
 
 include("globals.jl")
@@ -10,6 +10,6 @@ include("reaction_model.jl")
 include("misc.jl")
 include("simulation.jl")
 
-export deposition_rxn_network, film_thickness, estimate_derivative, K, K2, kKp, run_simulation, Ω, DAB
+export deposition_rxn_network, film_thickness, estimate_derivative, K, K2, kKp, run_simulation, Ω, DAB, plot_species_profiles
 
 end

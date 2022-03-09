@@ -1,7 +1,5 @@
-"""
-Raw data from Welty, et al. appendix K
-Columns are a jumbled mess due to copy/paste problems and original formatting.
-"""
+# Raw data from Welty, et al. appendix K
+# Columns are a jumbled mess due to copy/paste problems and original formatting.
 WELTY_DATA_RAW = [
     0.30 2.785 2.662 1.80 1.221 1.116
     0.35 2.628 2.476 1.85 1.209 1.105

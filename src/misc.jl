@@ -36,3 +36,25 @@ end
     left, right = half - dticks/2, half + dticks/2
     return round(Int, left):round(Int, right)
 end
+
+
+function plot_species_profiles(sol, x, y)
+    fig = CairoMakie.Figure()
+
+    Axis(fig[1,1], title="H₂")
+    heatmap!(x, y, sol[:H₂].value)
+
+    Axis(fig[1,2], title="SiCl₄")
+    heatmap!(x, y, sol[:SiCl₄].value)
+
+    Axis(fig[2,1], title="HCl")
+    heatmap!(x, y, sol[:HCl].value)
+
+    Axis(fig[2,2], title="SiCl₂")
+    heatmap!(x, y, sol[:SiCl₂].value)
+
+    Colorbar(fig[:,3], limits = (0, maximum(sol[:H₂].value)), colormap = :viridis,
+            label = "$species Concentration [mmol/L]")
+
+    return fig
+end

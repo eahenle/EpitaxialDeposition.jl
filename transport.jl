@@ -4,6 +4,16 @@
 using Markdown
 using InteractiveUtils
 
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
+macro bind(def, element)
+    quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local el = $(esc(element))
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
+        el
+    end
+end
+
 # ╔═╡ d2eb8940-9b16-11ec-1d74-3bc00f5f950f
 begin
 	import Pkg
@@ -12,6 +22,7 @@ begin
 	using JFVM
 	using CairoMakie
 	using StatsBase
+	using PlutoUI
 end
 
 # ╔═╡ 6e4302dc-b2ce-4d8f-809b-078f2c39c2dc
@@ -119,51 +130,42 @@ md"""
 ### TODO: write boundary/initial conditions, transport equations
 """
 
+# ╔═╡ 8075782d-3a72-4a43-833a-6f7a652f2cdf
+md"""
+## Simulation Parameters
+"""
+
+# ╔═╡ 7abb2d83-c82e-4ad0-a4f6-0c9b67633f1d
+# initial concentration of each species
+c₀ = Dict([
+	:H₂ => 1.,
+	:SiCl₄ => 1.,
+	:SiCl₂ => 0.,
+	:HCl => 0.
+])
+
+# ╔═╡ 77168336-8588-4f53-a236-cc517978455c
+md"""
+Voxel Edge $(@bind vox PlutoUI.Slider(0.:1e-3:1., default=0.2, show_value=true)) cm
+
+Reactor Diameter $(@bind Lx PlutoUI.Slider(1.:100., default=30., show_value=true)) cm
+
+Reactor Height $(@bind Ly PlutoUI.Slider(1.:100., default=30., show_value=true)) cm
+
+Wafer Diameter $(@bind wafer_diam PlutoUI.Slider(1.:40., default=15., show_value=true)) cm
+"""
+
 # ╔═╡ 7c259d4c-122c-4270-ad64-185b09be4a2f
 begin
     # generate uniform mesh, defined w/ size of domain and # cells in each direction
-	resolution = 0.2 # [cm⁻¹] - cells per cm / grid resolution
-    Lx = 30.0 # [cm] - domain length in x direction
-    Ly = 30.0 # [cm] - domain length in y direction
-
-	Nx = round(Int, Lx / resolution) # number of cells in x direction
-    Ny = round(Int, Ly / resolution) # numbers of cells in y direction
-
-    #N_steps = 100
-    
-    m = createMesh2D(Nx + 2, Ny + 2, Lx, Ly); # generate a uniform mesh (2D)
+	Nx = round(Int, Lx / vox) # number of cells in x direction
+    Ny = round(Int, Ly / vox) # numbers of cells in y direction    
+    mesh = createMesh2D(Nx + 2, Ny + 2, Lx, Ly); # mesh
 
     # encode each cell location to its corresponding location in true space
     x_cell_reshape = [1:Nx...] * Lx / Nx
     y_cell_reshape = [1:Ny...] * Ly / Ny
-    
-
 end;
-
-# ╔═╡ 7abb2d83-c82e-4ad0-a4f6-0c9b67633f1d
-c₀ = 0.
-
-# ╔═╡ 67a918ed-e0ce-4e1b-aa6d-a90e2e9a804a
-function plot_species_profiles(sol)
-    fig = CairoMakie.Figure()
-
-	Axis(fig[1,1], title="H₂")
-    heatmap!(x_cell_reshape, y_cell_reshape, sol[:H₂].value)
-
-	Axis(fig[1,2], title="SiCl₄")
-    heatmap!(x_cell_reshape, y_cell_reshape, sol[:SiCl₄].value)
-
-	Axis(fig[2,1], title="HCl")
-    heatmap!(x_cell_reshape, y_cell_reshape, sol[:HCl].value)
-
-	Axis(fig[2,2], title="SiCl₂")
-    heatmap!(x_cell_reshape, y_cell_reshape, sol[:SiCl₂].value)
-
-    Colorbar(fig[:,3], limits = (0, maximum(sol[:H₂].value)), colormap = :viridis,
-            label = "$species Concentration [mmol/L]")
-
-    return fig
-end
 
 # ╔═╡ 6a944590-be5a-498f-aaf0-8966f610dc61
 function trans_diff_Neumann(m::MeshStructure, D::Float64, c₀::Float64; N_steps=5)
@@ -223,7 +225,7 @@ function trans_diff_Neumann(m::MeshStructure, D::Float64, c₀::Float64; N_steps
 	
 	    ### parameterize the # of steps?
 	    
-	    @inbounds for i = 1:N_steps
+	    for i = 1:N_steps
 	        (M_t, RHS_t) = transientTerm(c, Δt, 1.0)
 	        M = M_t - M_diff + M_bc # adding together all sparse matrices of coefficients
 	        RHS = RHS_bc + RHS_t # add all RHS's to each other
@@ -234,11 +236,14 @@ function trans_diff_Neumann(m::MeshStructure, D::Float64, c₀::Float64; N_steps
 end
 
 # ╔═╡ 29f239fd-446b-4e84-acc7-4075914c5383
-# set up and completely solve transport model
-sol = Dict([key => trans_diff_Neumann(m, value, c₀) for (key, value) in D]);
+begin
+	# set up and completely solve transport model
+	EpitaxialDeposition.PARAMS[:reactor][:wafer_diameter] = wafer_diam
+	sol = Dict([key => trans_diff_Neumann(mesh, value, c₀[key]) for (key, value) in D])
+end;
 
 # ╔═╡ 9e4a46ec-b4c0-4cd5-8b76-a7ce3bea88db
-plot_species_profiles(sol)
+plot_species_profiles(sol, x_cell_reshape, y_cell_reshape)
 
 # ╔═╡ Cell order:
 # ╠═d2eb8940-9b16-11ec-1d74-3bc00f5f950f
@@ -256,8 +261,9 @@ plot_species_profiles(sol)
 # ╟─680313b8-d39c-428b-adb5-a10dee051860
 # ╠═9d2ae7d4-9ec3-4ae4-8a85-cdd589625612
 # ╠═7c259d4c-122c-4270-ad64-185b09be4a2f
+# ╟─8075782d-3a72-4a43-833a-6f7a652f2cdf
 # ╠═7abb2d83-c82e-4ad0-a4f6-0c9b67633f1d
-# ╠═29f239fd-446b-4e84-acc7-4075914c5383
-# ╠═67a918ed-e0ce-4e1b-aa6d-a90e2e9a804a
-# ╠═9e4a46ec-b4c0-4cd5-8b76-a7ce3bea88db
+# ╟─77168336-8588-4f53-a236-cc517978455c
+# ╟─9e4a46ec-b4c0-4cd5-8b76-a7ce3bea88db
+# ╟─29f239fd-446b-4e84-acc7-4075914c5383
 # ╠═6a944590-be5a-498f-aaf0-8966f610dc61

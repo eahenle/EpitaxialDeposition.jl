@@ -2,12 +2,12 @@ using EpitaxialDeposition, Test
 import Aqua
 
 @testset "simulation notebooks run" begin
-    @info "Running simulations.jl"
-    include("../simulations.jl")
+    @info "Running kinetics notebook"
+    include("../kinetics.jl")
     @test true
 
-    @info "Running JFVMtesting.jl"
-    include("../JFVMtesting.jl")
+    @info "Running transport notebook"
+    include("../transport.jl")
     @test true
 end
 

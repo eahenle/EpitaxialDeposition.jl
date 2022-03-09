@@ -26,8 +26,7 @@ end
 
 # ╔═╡ 2ec89215-0634-498c-94ee-389b9b8d7034
 md"""
-# Epitaxial Silicon Film Growth
-### Ian Harreschou, Adrian Henle
+# Chemical Kinetics
 """
 
 # ╔═╡ 036cb0e3-e198-49f7-8221-3593fbeebb95
