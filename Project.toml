@@ -1,6 +1,16 @@
 name = "EpitaxialDeposition"
 uuid = "331e1536-a44f-43b0-a701-95da4e4553d2"
 
+[deps]
+Catalyst = "479239e8-5488-4da2-87a7-35f2df7eef83"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
+JFVM = "d32f81f0-000d-5c7c-8375-24efa40f8589"
+LsqFit = "2fda8390-95c7-5789-9bda-21331edee243"
+ModelingToolkit = "961ee093-0014-501f-94e3-6117800e7a78"
+Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
 [compat]
 Aqua = "0.5"
 CairoMakie = "0.7"
@@ -11,15 +21,6 @@ DifferentialEquations = "7"
 Pluto = "0.18"
 PlutoUI = "0.7"
 Reexport = "1"
-
-[deps]
-Catalyst = "479239e8-5488-4da2-87a7-35f2df7eef83"
-DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
-LsqFit = "2fda8390-95c7-5789-9bda-21331edee243"
-ModelingToolkit = "961ee093-0014-501f-94e3-6117800e7a78"
-Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
