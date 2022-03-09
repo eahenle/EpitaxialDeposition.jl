@@ -36,7 +36,7 @@ md"""
 """
 
 # ╔═╡ 4842f48e-3d89-4104-b015-c383e0c63072
-PARAMS # from imported project code
+EpitaxialDeposition.PARAMS # from imported project code
 
 # ╔═╡ d7f3703a-dee2-46ce-a052-92d44938c965
 md"""
@@ -76,29 +76,6 @@ md"""
 ## Simulation
 """
 
-# ╔═╡ 0f3ddc3f-b14d-4457-9409-bcaed1737500
-md"""
-Equilibrium tuning parameters
-"""
-
-# ╔═╡ b99e33dc-c82b-4cd0-9da1-16eca8c4aa90
-md"""
-``k=`` $(@bind k TextField(default="1")), ``a=`` $(@bind a TextField(default="10.38")), ``b=`` $(@bind b TextField(default="16770"))
-"""
-
-# ╔═╡ 68f12708-a5b2-4765-be56-9103cbb69c16
-begin
-    pk = parse(Float64, k)
-    pa = parse(Float64, a)
-    pb = parse(Float64, b)
-end;
-
-# ╔═╡ 13a069be-9b1a-48c1-b289-83671207d087
-PARAMS[:kKp][:k], PARAMS[:kKp][:Ea], PARAMS[:kKp][:b] = pk, pa, pb
-
-# ╔═╡ d747dbb9-caf9-4fce-85b8-a0698c749f32
-[-603973.0, 10.38, 21158.1]
-
 # ╔═╡ b9e889d9-5edb-498e-b560-fd699fe2de73
 md"""
 ## Physical System
@@ -136,7 +113,7 @@ begin
 md"""
 **Maximum Film Thickness**: $(round(δ[max_idx], digits=2)) μm
 
-**Time to Maximum Thickness**: $(sol[max_idx, :timestamp] / 3600) hr
+**Time to Maximum Thickness**: $(sol[max_idx, :timestamp] / 60) min
 """
 end
 
@@ -275,20 +252,20 @@ begin
         xlabel="Temperature [K]"
     )
     
-    T = collect(range(temp_span[1], step=PARAMS[:Δt], temp_span[end]))
+    T = collect(range(temp_span[1], step=EpitaxialDeposition.PARAMS[:Δt][:Catalyst], temp_span[end]))
     
-    lines!(ax, T, K.(T), label="SiCl₄ + 2H₂ --> Si_dep + 4HCl")
-    lines!(ax, T, K2.(T), label="2HCl --> SiCl₂ + H₂ + Si_etch")
+    lines!(ax, T, K.(T), label="SiCl₄ deposition")
+    lines!(ax, T, K2.(T), label="HCl etching")
 
     fig[1,2] = Legend(fig, ax)
 
     local ax = Axis(
         fig[2,1],
-        ylabel="Equilibrium Rate Constant [∅]",
+        ylabel="Equilibrium Constant [∅]",
         xlabel="Temperature [K]"
     )
 
-    lines!(ax, T, kKp.(T), label="SiCl₄ --> 2SiCl₂ + Si_etch")
+    lines!(ax, T, kKp.(T), label="SiCl₄ etching")
 
     fig[2,2] = Legend(fig, ax)
     
@@ -326,9 +303,6 @@ begin
     fig
 end
 
-# ╔═╡ b5b8fe35-8c55-4b4d-a8c3-c1e87af38835
-
-
 # ╔═╡ Cell order:
 # ╟─2ec89215-0634-498c-94ee-389b9b8d7034
 # ╠═7c79cb6a-00cc-49d0-8110-bf849ae02c8c
@@ -342,16 +316,11 @@ end
 # ╟─05db1f52-1c87-465f-8b1b-25e45aed6d0b
 # ╟─b7222499-de8e-452f-ab52-e1a443109147
 # ╠═44189ce2-83df-4b77-8a5d-44383838d2ee
-# ╟─0f3ddc3f-b14d-4457-9409-bcaed1737500
-# ╠═b99e33dc-c82b-4cd0-9da1-16eca8c4aa90
-# ╟─68f12708-a5b2-4765-be56-9103cbb69c16
-# ╠═13a069be-9b1a-48c1-b289-83671207d087
-# ╠═d747dbb9-caf9-4fce-85b8-a0698c749f32
-# ╟─b9e889d9-5edb-498e-b560-fd699fe2de73
-# ╟─4016352d-ab26-4385-ba05-e57416df55c3
+# ╠═b9e889d9-5edb-498e-b560-fd699fe2de73
+# ╠═4016352d-ab26-4385-ba05-e57416df55c3
 # ╟─35d612fb-b859-42b1-9ea2-ae90ad01dfb8
-# ╟─abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
-# ╠═fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
+# ╠═abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
+# ╟─fd7dc5d2-28d1-4828-b53c-7a7f54fb4460
 # ╟─23d028df-dbd7-4188-ae74-7da3c071e549
 # ╟─e702092a-0b2e-475e-8dc1-51308be65c64
 # ╟─7b58b65f-a35a-461e-a4b6-4cb16646642e
@@ -360,5 +329,4 @@ end
 # ╟─084b9228-5deb-4cef-bf6b-d962ca884dbe
 # ╟─4e829cbd-3d8c-4ef6-8898-1af9443f01ac
 # ╟─df6821d6-9c47-4d12-a62f-1b458c5ac6ba
-# ╠═ef49613a-22c3-4775-b903-665544c77bdf
-# ╠═b5b8fe35-8c55-4b4d-a8c3-c1e87af38835
+# ╟─ef49613a-22c3-4775-b903-665544c77bdf

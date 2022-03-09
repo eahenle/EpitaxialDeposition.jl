@@ -1,13 +1,15 @@
 module EpitaxialDeposition
 
-using DataFrames, Reexport
+using DataFrames, LsqFit, Memoize, Reexport
 @reexport using Catalyst, DifferentialEquations
 
-include("params.jl")
+include("globals.jl")
+include("Welty.jl")
+include("diffusion.jl")
 include("reaction_model.jl")
 include("misc.jl")
 include("simulation.jl")
 
-export deposition_rxn_network, film_thickness, estimate_derivative, K, K2, kKp, run_simulation, PARAMS
+export deposition_rxn_network, film_thickness, estimate_derivative, K, K2, kKp, run_simulation, Ω, DAB
 
 end
