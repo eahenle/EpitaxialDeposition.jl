@@ -4,6 +4,9 @@
 
 ### Ian Harreschou and Adrian Henle
 
+[![Aqua QA](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
+[![.github/workflows/ci_build.yml](https://github.com/eahenle/EpitaxialDeposition.jl/actions/workflows/ci_build.yml/badge.svg)](https://github.com/eahenle/EpitaxialDeposition.jl/actions/workflows/ci_build.yml)
+
 #### Purpose
 
 `EpitaxialDeposition.jl` is a pure-Julia package for simulating the epitaxial growth of single-crystalline silicon thin films on silicon wafers by a chemical vapor deposition process.  The heavy lifting is done by the `Catalyst.jl` and `JFVM.jl` packages for chemical kinetics and mass transport, respectively.
