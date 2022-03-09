@@ -1,0 +1,30 @@
+name: build
+
+on: [push, pull_request, workflow_call]
+  branches:
+    - main
+
+env:
+  julia_version: 1.7.1
+
+concurrency:
+  group: ${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+
+  test_build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: setup
+        uses: actions/checkout@v2
+        uses: julia-actions/setup-julia@v1
+        with:
+          version: ${{ env.julia_version }}
+        run: julia setup.jl
+        uses: julia-actions/julia-buildpkg@v1
+
+      - name: test
+        uses: julia-actions/julia-runtest@v1
+
