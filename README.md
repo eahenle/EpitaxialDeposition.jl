@@ -9,7 +9,7 @@
 
 #### Purpose
 
-`EpitaxialDeposition.jl` is a pure-Julia package for simulating the epitaxial growth of single-crystalline silicon thin films on silicon wafers by a chemical vapor deposition process.  The heavy lifting is done by the `Catalyst.jl` and `JFVM.jl` packages for chemical kinetics and mass transport, respectively.
+`EpitaxialDeposition.jl` is a pure-Julia package for simulating the epitaxial growth of single-crystalline silicon thin films on silicon wafers by a chemical vapor deposition process.  The heavy lifting is done by the [`Catalyst.jl`](https://github.com/SciML/Catalyst.jl) and [`JFVM.jl`](https://github.com/simulkade/JFVM.jl) packages for chemical kinetics and mass transport, respectively.
 
 #### Setup
 
@@ -19,7 +19,7 @@
 $ git clone https://github.com/eahenle/EpitaxialDeposition.jl
 ```
 
-The `JFVM.jl` dependency is also not registered, and must be obtained from its GitHub repo.  To set up this and all other dependencies, run:
+The [`JFVM.jl`](https://github.com/simulkade/JFVM.jl) dependency is also not registered, and must be obtained from its GitHub repo.  To easily set up this and all other dependencies, run:
 
 ```
 $ julia setup.jl
@@ -36,4 +36,4 @@ Pkg> test
 
 #### Disclaimer
 
-**This package is a demonstration only.**  The assumptions are many, and the accuracy is untested.  Attempting to use this package for actual chemistry could result in harm to equipment or personnel.
+**This package is a demonstration only.**  Attempting to use this package as-is for actual chemistry could result in harm to equipment or personnel.
