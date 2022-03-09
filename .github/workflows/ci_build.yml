@@ -1,6 +1,11 @@
-on: [push, pull_request]
-  branches:
-    - main
+name: build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request: 
+    branches: [ main ]
+  workflow_dispatch:
 
 env:
   julia_version: 1.7.1
