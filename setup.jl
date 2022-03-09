@@ -1,7 +1,7 @@
 import Pkg
 
 Pkg.activate(".")
-Pkg.add("https://github.com/simulkade/JFVM.jl")
+Pkg.add(url="https://github.com/simulkade/JFVM.jl")
 Pkg.instantiate()
 Pkg.build()
 
