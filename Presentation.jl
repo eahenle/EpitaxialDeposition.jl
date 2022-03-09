@@ -84,7 +84,7 @@ This paper proposes a growth-rate model using **SiCl₄** as a source, in a **ho
 The authors list the following for a simplified reaction scheme:
 1. ``SiCl_4 + 2H_2 \rightarrow Si (s) + 4HCl``, deposition of Si on the substrate surface
 2. ``Si + 2HCl \rightarrow SiCl_2 + H_2``, etching of Si by HCl
-3. ``SiCl_4 + Si (s) \rightarrow 2SiCl_2``, an additional etching reaction, when the concentration of SiCl₄ is in the mixture is large. 
+3. ``SiCl_4 + Si (s) \rightarrow 2SiCl_2``, an additional etching reaction, when the concentration of SiCl₄ is in the mixture is large
 
 The decomposition of SiCl₄ is known to occur **on the surface** *rather than in the gas phase*, leaving behind single crystal layers of silicon on the substrate, and this rate is proportional to the number of surface sites occupied by SiCl₄. A **Langmuir adsorption model** is assumed by this analysis, and is therefore baked into our assumptions.
 
@@ -99,7 +99,7 @@ md"
 * ``K_2`` = the rate constant for reaction (2), the surface reaction of HCl with Si, ``K_2 = K_{20}exp[\frac{-E_{a2}}{RT}]``
 * ``K_3`` = the rate constant for reaction (3), the surface reaction of SiCl₄ on Si, ``K_3 = K_{30}exp[\frac{-E_{a3}}{RT}]``
 
-Values of the various reaction constants presented were not available in literature (and relevant experimental data is extremely scarce it seems), so they were numerically fit by the authors to experimental data, coming out to be:
+These are composite rate constants which include both flux to the surface, as well as the surface reaction itself. Values of the various reaction constants presented were not available in literature (and relevant experimental data is extremely scarce it seems), so they were numerically fit by the authors to experimental data, coming out to be:
 
 * ``K_{0} = 2950.94 \frac{cm}{s}``, ``E = 18.910 \frac{kcal}{mol}``
 * ``K_{20} = 39.3886 \frac{cm}{s}``, ``E_{a2} = 17.490 \frac{kcal}{mol}``
@@ -108,6 +108,20 @@ Values of the various reaction constants presented were not available in literat
 ⭐ In our analysis, these constants are multiplied by our wafer surface area to effectively scale the reaction rates (larger wafers will result in higher overall rate and quicker depletion of reactants) -- something that wasn't being considered prior!
 
 "
+
+# ╔═╡ b29aeadf-4f5a-42a3-942e-22559a7cab21
+md"""
+## **Simplifying Assumptions**
+
+1. In the simplest model, **gaseous species are instantaneously equilibrated with the reactor volume**, resulting in no concentration gradient
+2. The **inlet species are only SiCl₄ and H₂**, their mole fractions being complementary of one another
+3. The **reactor operates isothermally**
+4. **Lennard-Jones parameters** (molecular collision diameter) are estimated from each species' **critical temperatures and pressures** in calculation diffusion coefficients, the method for which is outlined in Ch. 24 of *Fundamentals of Momentum, Heat, and Mass Transfer, 6th Ed*
+    - SiCl₂ critical properties are not available and a quick DFT calculation attempting to elucidate them failed, so we used SiH₂Cl₂ as a proxy molecule
+5. As outlined in the paper we based the model off, these **kinetic parameters are most valid around 1200 °C**
+6. A 
+
+"""
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -436,9 +450,10 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╠═185fce88-b4c3-4be7-84b4-7f2ce3db1c06
 # ╟─bdf2b950-8afe-11ec-1732-61696ed36c9b
 # ╟─82f306b3-0039-406e-a99a-68303ecdcfac
-# ╠═b256ab46-4990-4e6a-8966-453790fa774b
+# ╟─b256ab46-4990-4e6a-8966-453790fa774b
 # ╟─0ae4bec3-f8dd-4c99-b168-a3d48b113dda
-# ╟─60fccd3e-e87b-49b5-b073-dc16dc4e0c92
+# ╠═60fccd3e-e87b-49b5-b073-dc16dc4e0c92
 # ╠═e2678619-a552-4397-af1b-f657c03c58a8
+# ╠═b29aeadf-4f5a-42a3-942e-22559a7cab21
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
