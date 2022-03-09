@@ -113,13 +113,64 @@ These are composite rate constants which include both flux to the surface, as we
 md"""
 ## **Simplifying Assumptions**
 
-1. In the simplest model, **gaseous species are instantaneously equilibrated with the reactor volume**, resulting in no concentration gradient
+1. In the simplest model, **gaseous species are initially instantaneously equilibrated with the reactor volume**, resulting in no concentration gradient
 2. The **inlet species are only SiCl₄ and H₂**, their mole fractions being complementary of one another
 3. The **reactor operates isothermally**
 4. **Lennard-Jones parameters** (molecular collision diameter) are estimated from each species' **critical temperatures and pressures** in calculation diffusion coefficients, the method for which is outlined in Ch. 24 of *Fundamentals of Momentum, Heat, and Mass Transfer, 6th Ed*
     - SiCl₂ critical properties are not available and a quick DFT calculation attempting to elucidate them failed, so we used SiH₂Cl₂ as a proxy molecule
 5. As outlined in the paper we based the model off, these **kinetic parameters are most valid around 1200 °C**
-6. A 
+6. **Dilute conditions** for our limiting reactant and excess of others; **ideal gas behavior** of these species
+7. Gas film at the surface of the wafer is homogeneous, allowing us to run a single kinetic simulation across the surface of the wafer (opposed to independent simulations for each "cell" in our diffusion model)
+
+"""
+
+# ╔═╡ 7a941657-7ae6-4eaf-8e06-7a6271a47a2d
+md"""
+## **Numerical Methods and Boundary/Initial Conditions**
+
+⭐ This project has been done entirely in Julia -- something which we didn't expect to be able to say at the beginning. 
+
+The general form of the partial differential equations that we were able to solve in Julia using a finite volume method is as follows: 
+
+
+$$\alpha \frac{\partial \phi}{\partial t} + \nabla \cdot(-\mathscr{D} \nabla \phi) + \beta \phi = \gamma$$
+
+with $$\phi$$ being the variable of interest. In the case of diffusion, this equation becomes:
+
+$$\frac{\partial c}{\partial t} + \nabla \cdot(-\mathscr{D} \nabla c) = 0$$
+
+The corresponding boundary conditions for this PDE (both in simplified and unsimplified form) are:
+
+$$a \nabla \phi \cdot \textbf{n} + b \phi = c$$
+
+where in this simulation we used Neumann boundary conditions, allowing us to specify ∅ flux at any cell boundary.
+
+initial conditions which relate to concentration of species (set during the simulation)
+
+how we describe the "pseudo-concentration" of deposited silicon (Si_dep and Si_etch)
+
+reactions only happen on the silicon surface
+
+film growth rate over time, simple derivative of growth array over Δt
+
+"""
+
+# ╔═╡ 695d2cd2-41dc-4749-a89e-fa187667bf47
+md"""
+## **Julia Packages and Acknowledgements**
+
+
+"""
+
+# ╔═╡ 840fa195-ee05-41a7-a2f3-6ac04b538ccb
+md"""
+## **Future Work**
+
+- Instead of assuming that our gases are instantly dosed into our reactor and equilibrate with its volume, we have an inlet nozzle for reactants and an outlet for the byproduct gas (via manipulating the boundary conditions)
+- Accumulating more relevant experimental data, and hopefully data which corroborates the current model
+- Complete model for simultaneous reaction and diffusion, rather than using two solvers which communicate between one another (+ fluid flow if possible)
+- Introduction of dopants to create P/N-type semiconductors
+- Investigation of different reactor setups, multi-wafer growth
 
 """
 
@@ -452,8 +503,11 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╟─82f306b3-0039-406e-a99a-68303ecdcfac
 # ╟─b256ab46-4990-4e6a-8966-453790fa774b
 # ╟─0ae4bec3-f8dd-4c99-b168-a3d48b113dda
-# ╠═60fccd3e-e87b-49b5-b073-dc16dc4e0c92
-# ╠═e2678619-a552-4397-af1b-f657c03c58a8
+# ╟─60fccd3e-e87b-49b5-b073-dc16dc4e0c92
+# ╟─e2678619-a552-4397-af1b-f657c03c58a8
 # ╠═b29aeadf-4f5a-42a3-942e-22559a7cab21
+# ╠═7a941657-7ae6-4eaf-8e06-7a6271a47a2d
+# ╠═695d2cd2-41dc-4749-a89e-fa187667bf47
+# ╠═840fa195-ee05-41a7-a2f3-6ac04b538ccb
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
