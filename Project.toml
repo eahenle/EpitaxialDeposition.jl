@@ -9,6 +9,7 @@ JFVM = "d32f81f0-000d-5c7c-8375-24efa40f8589"
 LsqFit = "2fda8390-95c7-5789-9bda-21331edee243"
 ModelingToolkit = "961ee093-0014-501f-94e3-6117800e7a78"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
@@ -18,9 +19,13 @@ Catalyst = "10"
 ColorSchemes = "3"
 DataFrames = "1"
 DifferentialEquations = "7"
+JFVM = "1"
+LsqFit = "0.12"
+ModelingToolkit = "8"
 Pluto = "0.18"
 PlutoUI = "0.7"
 Reexport = "1"
+StatsBase = "0.33"
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
