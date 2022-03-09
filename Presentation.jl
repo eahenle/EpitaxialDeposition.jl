@@ -105,29 +105,8 @@ Values of the various reaction constants presented were not available in literat
 * ``K_{20} = 39.3886 \frac{cm}{s}``, ``E_{a2} = 17.490 \frac{kcal}{mol}``
 * ``K_{30} = 952.058 \frac{cm}{s}``, ``E_{a3} = 21.721 \frac{kcal}{mol}``
 
+In our analysis, these constants are multiplied by our wafer surface area to effectively scale the reaction rates (larger wafers will result in higher overall rate and quicker depletion of reactants).
 "
-
-# ╔═╡ f58b39cc-3a7c-4b30-bda5-6c837c2450cd
-begin
-	article_symbols = [:F, :G]
-	
-	definitions = [
-		md"Total rate of silicon deposition on the substrate", 
-		md"Total rate of silicon film growth on the substrate", 
-	]
-		# md"Bulk concentration of SiCl₄", 
-		# md"Concentration of SiCl₄ in the gas phase adjacent to the growing surface"
-	math_definitions = [
-		md"$F_{1} = (H(C_{BS}-C_{SS}) - K_3C_{SS}) \left[ 1- \frac{2K_2}{H_{HCl}+K_2} \right]$",
-		md"$D{{\left( \frac{\eta X} {\rho V} \right)}^{-1/2}}$"
-	]
-	
-	DataFrame("Article Symbols" => article_symbols, 
-			"Definition" => definitions, 
-			"Symbolics" => math_definitions)
-	
-	
-end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -460,6 +439,5 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╟─0ae4bec3-f8dd-4c99-b168-a3d48b113dda
 # ╠═60fccd3e-e87b-49b5-b073-dc16dc4e0c92
 # ╠═e2678619-a552-4397-af1b-f657c03c58a8
-# ╠═f58b39cc-3a7c-4b30-bda5-6c837c2450cd
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
