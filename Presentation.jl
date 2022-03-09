@@ -105,7 +105,8 @@ Values of the various reaction constants presented were not available in literat
 * ``K_{20} = 39.3886 \frac{cm}{s}``, ``E_{a2} = 17.490 \frac{kcal}{mol}``
 * ``K_{30} = 952.058 \frac{cm}{s}``, ``E_{a3} = 21.721 \frac{kcal}{mol}``
 
-In our analysis, these constants are multiplied by our wafer surface area to effectively scale the reaction rates (larger wafers will result in higher overall rate and quicker depletion of reactants).
+⭐ In our analysis, these constants are multiplied by our wafer surface area to effectively scale the reaction rates (larger wafers will result in higher overall rate and quicker depletion of reactants) -- something that wasn't being considered prior!
+
 "
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
@@ -437,7 +438,7 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╟─82f306b3-0039-406e-a99a-68303ecdcfac
 # ╠═b256ab46-4990-4e6a-8966-453790fa774b
 # ╟─0ae4bec3-f8dd-4c99-b168-a3d48b113dda
-# ╠═60fccd3e-e87b-49b5-b073-dc16dc4e0c92
+# ╟─60fccd3e-e87b-49b5-b073-dc16dc4e0c92
 # ╠═e2678619-a552-4397-af1b-f657c03c58a8
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
