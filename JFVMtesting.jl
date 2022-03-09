@@ -49,6 +49,13 @@ We will use method 1, using critical parameters (Tc, Pc) to estimate the collisi
 # ╔═╡ 457a34ad-8514-4c6a-b16b-c94e6515ba40
 # note that we're pulling critical parameters for SiCl₂ by taking them to be equal to SiH₂Cl₂
 
+# ╔═╡ eb71d9ae-33d7-45dd-80ea-950a5a18ea78
+md"""
+To allow for calculating the collision integral at any temperature, we interpolate the data by fitting a model of the form:
+
+$Ω = \frac{a}{b\kappa T/\epsilon + c} + d$
+"""
+
 # ╔═╡ 6e4c3904-6543-41e9-a862-22cb749ed178
 begin
 
@@ -224,6 +231,7 @@ fig2
 # ╟─6e4302dc-b2ce-4d8f-809b-078f2c39c2dc
 # ╠═84ecce92-8d75-4a67-8f71-ca63a6da1137
 # ╠═457a34ad-8514-4c6a-b16b-c94e6515ba40
+# ╟─eb71d9ae-33d7-45dd-80ea-950a5a18ea78
 # ╠═6e4c3904-6543-41e9-a862-22cb749ed178
 # ╠═00f98dbf-4df2-4972-8f3e-15425b735077
 # ╠═9912d690-5dd6-45d9-94cf-8e0ca301fd29
