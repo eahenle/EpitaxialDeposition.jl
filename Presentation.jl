@@ -26,9 +26,7 @@ md"
 ### **Reactors and Systems** 
 Chemical vapor deposition is a manufacturing technique used throughout the semiconductor industry to produce high performance thin films. 
 
-In CVD, volatile, gaseous precursors are the source of the species to be deposited. There are a few common reactor configurations used in epitaxial Si deposition, wbut here we consider a rectangular reactor.
-
-*insert image*
+**Volatile, gaseous precursors** are the source of the species to be deposited. There are a few common reactor configurations used in epitaxial Si deposition, but here we consider a rectangular reactor.
 
 There are also many types of CVD, such as 
 - *Ambient pressure* (APCVD) 
@@ -46,17 +44,12 @@ Reaction steps follow closely to microkinetic models for surface reactions that 
 5) Desorption from the surface
 6) Transport from the boundary layer to the bulk gas, and out of the reactor
 
-Vapor phase epitaxy is one technique for generating highly isotropic films, and there are multiple reactant feedstocks used, such as silicon tetrachloride (``SiCl_4``) or silicon hydride (a silane - ``SiH_4``).
+Vapor phase epitaxy is one technique for generating highly isotropic films, and there are multiple reactant feedstocks used, such as **silicon tetrachloride** (``SiCl_4``) or silicon hydride (a silane - ``SiH_4``).
 
 - 1200 °C: `` SiCl_4 (g) + 2H_2 (g) \rightarrow Si(s) + 4HCl (g)`` 
 - 650 °C: ``SiH_4 (g) \rightarrow Si(s) + 2H_2 (g)``
 
 These reactions have a few nasty byproducts, including **hydrogen chloride** and **silicon dichloride**, which is a highly unstable molecule.
-
-
-*insert image* 
-
-
 "
 
 # ╔═╡ 0ae4bec3-f8dd-4c99-b168-a3d48b113dda
@@ -113,11 +106,12 @@ md"""
 1. In the simplest model, **gaseous species are initially instantaneously equilibrated with the reactor volume**, resulting in no concentration gradient
 2. The **inlet species are only SiCl₄ and H₂**, their mole fractions being complementary of one another
 3. The **reactor operates isothermally**
-4. **Lennard-Jones parameters** (molecular collision diameter) are estimated from each species' **critical temperatures and pressures** in calculation diffusion coefficients, the method for which is outlined in Ch. 24 of *Fundamentals of Momentum, Heat, and Mass Transfer, 6th Ed*
+4. **Lennard-Jones parameters** (molecular collision diameter) are estimated from each species' **critical temperatures and pressures**
     - SiCl₂ critical properties are not available and a quick DFT calculation attempting to elucidate them failed, so we used SiH₂Cl₂ as a proxy molecule
 5. As outlined in the paper we based the model off, these **kinetic parameters are most valid around 1200 °C**
 6. **Dilute conditions** for our limiting reactant and excess of others; **ideal gas behavior** of these species
-7. Gas film at the surface of the wafer is homogeneous, allowing us to run a single kinetic simulation across the surface of the wafer (opposed to independent simulations for each "cell" in our diffusion model)
+7. Gas film at the surface of the wafer is **homogeneous**, allowing us to run a **single kinetic simulation** across the surface of the wafer 
+8. Reactions only happen on the silicon surface
 
 """
 
@@ -127,28 +121,30 @@ md"""
 
 ⭐ This project has been done entirely in Julia -- something which we didn't expect to be able to say at the beginning. 
 
-The general form of the partial differential equations that we were able to solve in Julia using a finite volume method is as follows: 
+1. The general form of the partial differential equations that we were able to solve in Julia using a finite volume method is as follows: 
 
 
-$$\alpha \frac{\partial \phi}{\partial t} + \nabla \cdot(-\mathscr{D} \nabla \phi) + \beta \phi = \gamma$$
+$$\alpha \frac{\partial \phi}{\partial t} + \nabla \cdot(-\mathscr{D} \nabla \phi) + \beta \phi = \gamma$$ 
 
-with $$\phi$$ being the variable of interest. In the case of diffusion, this equation becomes:
+- In the case of diffusion, this equation becomes:
 
 $$\frac{\partial c}{\partial t} + \nabla \cdot(-\mathscr{D} \nabla c) = 0$$
 
-The corresponding boundary conditions for this PDE (both in simplified and unsimplified form) are:
+2. The corresponding boundary conditions for this PDE (both in simplified and unsimplified form) are:
 
 $$a \nabla \phi \cdot \textbf{n} + b \phi = c$$
 
-where in this simulation we used **Neumann boundary conditions**, allowing us to specify ∅ flux at any cell boundary.
+- In this simulation we used **Neumann boundary conditions**, allowing us to specify species' flux at any cell boundary. This made it possible to create a symbolic "wafer" which spans the finite volume cells in the diffusion portion of the simulation
 
-initial conditions which relate to concentration of species (set during the simulation)
+3. Initial conditions relating to species concentrations are set before the simulation, and are interactive / easily manipulated
 
-how we describe the "pseudo-concentration" of deposited silicon (Si_dep and Si_etch)
 
-reactions only happen on the silicon surface
+4. Symbolic species ``Si_{dep}`` and ``Si_{etch}`` are generated as "products" in our reactions, and the difference between them is the total amount of silicon deposited across the wafer 
 
-film growth rate over time, simple derivative of growth array over Δt
+- The differential equations for the species are all in the gas phase, and were reaching unrealistic equilibria (not seeing depletion of reactants over time)
+
+
+5. Film growth rate over time was calculated--since we had such small timesteps--as the change in film thickness over the timestep
 
 """
 
@@ -156,20 +152,38 @@ film growth rate over time, simple derivative of growth array over Δt
 md"""
 ## **Julia Packages and Acknowledgements**
 
-- *Catalyst.jl* - generation of the chemical reaction network and associated differential equations
+- *Catalyst.jl* - allowed for the painless generation of the chemical reaction network and associated differential equations
 - *JFVM.jl* - provided a framework for finite volume methods, allowing us to include diffusion of species from the wafer surface
+- *PlutoUI.jl* - provided numerous tools for enabling interactivity within the notebook
+- *LsqFit.jl* - used to fit a model to tabulated data from Welty, pertinent to the diffusion coefficients
+
+🍮 **Dr. Kelsey Stoerzinger**, for helpful discussion and project guidance 🍮
 """
 
 # ╔═╡ 840fa195-ee05-41a7-a2f3-6ac04b538ccb
 md"""
 ## **Future Work**
 
-- Instead of assuming that our gases are instantly dosed into our reactor and equilibrate with its volume, we have an inlet nozzle for reactants and an outlet for the byproduct gas (via manipulating the boundary conditions)
-- Accumulating more relevant experimental data, and hopefully data which corroborates the current model
-- Complete model for simultaneous reaction and diffusion, rather than using two solvers which communicate between one another (+ fluid flow if possible)
-- Introduction of dopants to create P/N-type semiconductors
-- Investigation of different reactor setups, multi-wafer growth
+- Realistic reactant sources and an outlet for the byproduct gas
+- Finding **relevant experimental data**, which refines or extends the current model
+- **Simultaneous reaction and diffusion** vs. two solvers which communicate between one another (+ fluid flow if possible)
+- Introduction of **dopants** to create **P/N-type semiconductors**
+- Different **reactor setups/geometries**, **multi-wafer growth**
+- Finding more advanced reaction mechanisms
 
+"""
+
+# ╔═╡ a50df40f-0a00-456d-ba70-b5ecc637e6b4
+md"""
+## **Other References & Resources**
+
+- **Project inspiration:** *Modelling of silicon epitaxy using silicon tetrachloride as the source*, D.K. Pal, M.K. Kowar, A.N. Daw, P. Roy, 1995
+
+- **Spherical molecule diffusion model:** *Fundamentals of Momentum, Heat, and Mass Transfer, 6th Ed*, James R. Welty, Gregoryb L. Rorrer, David G. Foster, 2015
+
+- **SiH₂Cl₂ critical temperature and pressure:** *Process Feasibility Study in Support of Silicon Materials*, Ku-Yen Li, Keith C. Hansen, Carl L. Yaws, June 1979
+
+- **Equilibrium rate constant data for ``SiCl_4 + Si(s) \leftrightarrow SiCl_2``:** *Experimentelle Untersuchung des Reaktionsgleichgewichtes SiCl₄(g) + Si(f) = 2SiCl₂(g) nach der Stromungshmethode*, Von R. Teichmann, E. Wolf
 """
 
 # ╔═╡ Cell order:
@@ -179,7 +193,8 @@ md"""
 # ╟─0ae4bec3-f8dd-4c99-b168-a3d48b113dda
 # ╟─60fccd3e-e87b-49b5-b073-dc16dc4e0c92
 # ╟─e2678619-a552-4397-af1b-f657c03c58a8
-# ╟─b29aeadf-4f5a-42a3-942e-22559a7cab21
+# ╠═b29aeadf-4f5a-42a3-942e-22559a7cab21
 # ╠═7a941657-7ae6-4eaf-8e06-7a6271a47a2d
 # ╠═695d2cd2-41dc-4749-a89e-fa187667bf47
 # ╠═840fa195-ee05-41a7-a2f3-6ac04b538ccb
+# ╠═a50df40f-0a00-456d-ba70-b5ecc637e6b4
