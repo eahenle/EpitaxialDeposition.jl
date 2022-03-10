@@ -172,9 +172,6 @@ begin
     y_cell_reshape = [1:Ny...] * Ly / Ny
 end;
 
-# ╔═╡ 393468a9-6f28-4c26-8b69-d273fbc1b2df
-Nx, Ny
-
 # ╔═╡ 29f239fd-446b-4e84-acc7-4075914c5383
 begin
 	# set up and completely solve transport model
@@ -202,9 +199,8 @@ plot_species_profiles(sol, x_cell_reshape, y_cell_reshape)
 # ╟─680313b8-d39c-428b-adb5-a10dee051860
 # ╠═9d2ae7d4-9ec3-4ae4-8a85-cdd589625612
 # ╠═7c259d4c-122c-4270-ad64-185b09be4a2f
-# ╠═393468a9-6f28-4c26-8b69-d273fbc1b2df
 # ╟─8075782d-3a72-4a43-833a-6f7a652f2cdf
 # ╠═7abb2d83-c82e-4ad0-a4f6-0c9b67633f1d
 # ╟─77168336-8588-4f53-a236-cc517978455c
-# ╟─9e4a46ec-b4c0-4cd5-8b76-a7ce3bea88db
+# ╠═9e4a46ec-b4c0-4cd5-8b76-a7ce3bea88db
 # ╠═29f239fd-446b-4e84-acc7-4075914c5383
