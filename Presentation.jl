@@ -4,6 +4,9 @@
 using Markdown
 using InteractiveUtils
 
+# ╔═╡ 185fce88-b4c3-4be7-84b4-7f2ce3db1c06
+using DataFrames, PlutoUI
+
 # ╔═╡ bdf2b950-8afe-11ec-1732-61696ed36c9b
 md"
 # CHE 540 - Chemical Reactions I 
@@ -67,9 +70,9 @@ md"
 This paper proposes a growth-rate model using **SiCl₄** as a source, in a **horizontal rectangular reactor at atmospheric pressure**. The model includes factors such as **temperature, flow rate, mole fraction, and position within the reactor,** and the model--after some numerical manipulation--agrees well with experimental data available.
 
 !!! note
-	A few resources are referenced in this paper which seem to cover epitaxy at low pressures:
-	- \[11\] *K.F. Jensen and D.B. Graves, Modelling and analysis of low pressure CVD reactor, J. Electrochem. Soc., 131 (1983) 1950.*
-	- \[12\] *M.G. Joshi, Modelling of LPCVD reactors, J. Electrochem. Soc., 134 (1987) 318.*
+    A few resources are referenced in this paper which seem to cover epitaxy at low pressures:
+    - \[11\] *K.F. Jensen and D.B. Graves, Modelling and analysis of low pressure CVD reactor, J. Electrochem. Soc., 131 (1983) 1950.*
+    - \[12\] *M.G. Joshi, Modelling of LPCVD reactors, J. Electrochem. Soc., 134 (1987) 318.*
 
 The authors list the following for a simplified reaction scheme:
 1. ``SiCl_4 + 2H_2 \rightarrow Si (s) + 4HCl``, deposition of Si on the substrate surface
@@ -198,3 +201,6 @@ md"""
 # ╠═695d2cd2-41dc-4749-a89e-fa187667bf47
 # ╠═840fa195-ee05-41a7-a2f3-6ac04b538ccb
 # ╠═a50df40f-0a00-456d-ba70-b5ecc637e6b4
+# ╟─b29aeadf-4f5a-42a3-942e-22559a7cab21
+# ╟─00000000-0000-0000-0000-000000000001
+# ╟─00000000-0000-0000-0000-000000000002

@@ -17,5 +17,5 @@ function run_simulation(y_SiCl₄::Float64, Psys::Float64, temperature::Float64,
     ]
 
     # define the ODEs and solve
-    return DataFrame(solve(ODEProblem(deposition_rxn_network, u₀, (0.0, t_max)), Tsit5(), saveat=PARAMS[:Δt], maxiters=1e8))
+    return DataFrame(solve(ODEProblem(deposition_rxn_network, u₀, (0.0, t_max)), Tsit5(), saveat=PARAMS[:Δt][:Catalyst], maxiters=1e8))
 end
