@@ -186,6 +186,21 @@ md"""
 - **Equilibrium rate constant data for ``SiCl_4 + Si(s) \leftrightarrow SiCl_2``:** *Experimentelle Untersuchung des Reaktionsgleichgewichtes SiCl₄(g) + Si(f) = 2SiCl₂(g) nach der Stromungshmethode*, Von R. Teichmann, E. Wolf
 """
 
+# ╔═╡ 00000000-0000-0000-0000-000000000001
+PLUTO_PROJECT_TOML_CONTENTS = """
+[deps]
+"""
+
+# ╔═╡ 00000000-0000-0000-0000-000000000002
+PLUTO_MANIFEST_TOML_CONTENTS = """
+# This file is machine-generated - editing it directly is not advised
+
+julia_version = "1.7.0"
+manifest_format = "2.0"
+
+[deps]
+"""
+
 # ╔═╡ Cell order:
 # ╟─bdf2b950-8afe-11ec-1732-61696ed36c9b
 # ╟─82f306b3-0039-406e-a99a-68303ecdcfac
@@ -194,7 +209,9 @@ md"""
 # ╟─60fccd3e-e87b-49b5-b073-dc16dc4e0c92
 # ╟─e2678619-a552-4397-af1b-f657c03c58a8
 # ╟─b29aeadf-4f5a-42a3-942e-22559a7cab21
-# ╠═7a941657-7ae6-4eaf-8e06-7a6271a47a2d
-# ╠═695d2cd2-41dc-4749-a89e-fa187667bf47
-# ╠═840fa195-ee05-41a7-a2f3-6ac04b538ccb
-# ╠═a50df40f-0a00-456d-ba70-b5ecc637e6b4
+# ╟─7a941657-7ae6-4eaf-8e06-7a6271a47a2d
+# ╟─695d2cd2-41dc-4749-a89e-fa187667bf47
+# ╟─840fa195-ee05-41a7-a2f3-6ac04b538ccb
+# ╟─a50df40f-0a00-456d-ba70-b5ecc637e6b4
+# ╟─00000000-0000-0000-0000-000000000001
+# ╟─00000000-0000-0000-0000-000000000002
