@@ -17,6 +17,7 @@ end
 # ╔═╡ d2eb8940-9b16-11ec-1d74-3bc00f5f950f
 begin
 	import Pkg
+	include("setup.jl")
 	Pkg.activate(".")
 	using EpitaxialDeposition
 	using JFVM
@@ -49,16 +50,6 @@ Values for σ and a parameter ϵ are tabulated in the book referenced, Appendix 
 We will use method 1, using critical parameters (Tc, Pc) to estimate the collision diameter and energy ϵ for species which we can gather critical parameter information.
 
 """
-
-# ╔═╡ 84ecce92-8d75-4a67-8f71-ca63a6da1137
-#= TO-DO:
-
-2) Add something more to the c₀ for each species (most likely values exported from Catalyst)
-
-=#
-
-# ╔═╡ 457a34ad-8514-4c6a-b16b-c94e6515ba40
-# note that we're pulling critical parameters for SiCl₂ by taking them to be equal to SiH₂Cl₂
 
 # ╔═╡ eb71d9ae-33d7-45dd-80ea-950a5a18ea78
 md"""
@@ -123,11 +114,6 @@ D = Dict(
 # ╔═╡ 680313b8-d39c-428b-adb5-a10dee051860
 md"""
 ## Finite Volume Method for Showing Concentration Gradients
-"""
-
-# ╔═╡ 9d2ae7d4-9ec3-4ae4-8a85-cdd589625612
-md"""
-### TODO: write boundary/initial conditions, transport equations
 """
 
 # ╔═╡ 8075782d-3a72-4a43-833a-6f7a652f2cdf
@@ -248,8 +234,6 @@ plot_species_profiles(sol, x_cell_reshape, y_cell_reshape)
 # ╔═╡ Cell order:
 # ╠═d2eb8940-9b16-11ec-1d74-3bc00f5f950f
 # ╟─6e4302dc-b2ce-4d8f-809b-078f2c39c2dc
-# ╠═84ecce92-8d75-4a67-8f71-ca63a6da1137
-# ╠═457a34ad-8514-4c6a-b16b-c94e6515ba40
 # ╟─eb71d9ae-33d7-45dd-80ea-950a5a18ea78
 # ╟─6e4c3904-6543-41e9-a862-22cb749ed178
 # ╟─87620c55-7fbc-4004-928a-55c900a9a144
@@ -259,7 +243,6 @@ plot_species_profiles(sol, x_cell_reshape, y_cell_reshape)
 # ╟─86c58901-b84d-45f7-a59e-521337b9ec36
 # ╟─99be578d-673b-4f82-b0e4-2cd3fed8b847
 # ╟─680313b8-d39c-428b-adb5-a10dee051860
-# ╠═9d2ae7d4-9ec3-4ae4-8a85-cdd589625612
 # ╠═7c259d4c-122c-4270-ad64-185b09be4a2f
 # ╟─8075782d-3a72-4a43-833a-6f7a652f2cdf
 # ╠═7abb2d83-c82e-4ad0-a4f6-0c9b67633f1d
