@@ -1,14 +1,17 @@
 using EpitaxialDeposition, Test
 import Aqua
 
-@testset "simulation notebooks run" begin
+@testset "notebooks run" begin
+    @info "Running kinetics notebook"
+    @time include("../kinetics.jl")
+    @test true
 
     @info "Running transport notebook"
     @time include("../transport.jl")
     @test true
 
-    @info "Running kinetics notebook"
-    @time include("../kinetics.jl")
+    @info "Running presentation notebook"
+    @time include("../Presentation.jl")
     @test true
 
     @info "Running coupled notebook"
