@@ -143,7 +143,7 @@ The corresponding boundary conditions for this PDE (both in simplified and unsim
 
 $$a \nabla \phi \cdot \textbf{n} + b \phi = c$$
 
-where in this simulation we used Neumann boundary conditions, allowing us to specify ∅ flux at any cell boundary.
+where in this simulation we used **Neumann boundary conditions**, allowing us to specify ∅ flux at any cell boundary.
 
 initial conditions which relate to concentration of species (set during the simulation)
 
@@ -154,6 +154,9 @@ reactions only happen on the silicon surface
 film growth rate over time, simple derivative of growth array over Δt
 
 """
+
+# ╔═╡ 7a4cc02b-3f9c-47cb-9a8f-e110866f7074
+
 
 # ╔═╡ 695d2cd2-41dc-4749-a89e-fa187667bf47
 md"""
@@ -505,8 +508,9 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╟─0ae4bec3-f8dd-4c99-b168-a3d48b113dda
 # ╟─60fccd3e-e87b-49b5-b073-dc16dc4e0c92
 # ╟─e2678619-a552-4397-af1b-f657c03c58a8
-# ╠═b29aeadf-4f5a-42a3-942e-22559a7cab21
+# ╟─b29aeadf-4f5a-42a3-942e-22559a7cab21
 # ╠═7a941657-7ae6-4eaf-8e06-7a6271a47a2d
+# ╠═7a4cc02b-3f9c-47cb-9a8f-e110866f7074
 # ╠═695d2cd2-41dc-4749-a89e-fa187667bf47
 # ╠═840fa195-ee05-41a7-a2f3-6ac04b538ccb
 # ╟─00000000-0000-0000-0000-000000000001
