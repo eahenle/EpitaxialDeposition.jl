@@ -199,7 +199,7 @@ end
 if ! isnothing(idx)
     
 md"""
-**Switched from Deposition to Etching at**: $(round(sol[idx, :timestamp], digits=2)) s
+### **Switched from Deposition to Etching at**: $(round(sol[idx, :timestamp], digits=2)) s
 """
 
 end
@@ -210,7 +210,7 @@ md"
 ### Influence of Temperature on Film Thickness"
 
 # ╔═╡ a347066c-c48e-42e9-a051-ac530d9bb7eb
-md"Temperature Range: $(@bind temp_span PlutoUI.RangeSlider(900.:50:1400.)) K"
+md"Temperature Range: $(@bind temp_span PlutoUI.RangeSlider(900.0:50:1400.0)) K"
 
 # ╔═╡ 96528e86-2a83-4b59-a412-de66b4475d52
 begin
@@ -326,9 +326,6 @@ begin
     fig
 end
 
-# ╔═╡ b5b8fe35-8c55-4b4d-a8c3-c1e87af38835
-
-
 # ╔═╡ Cell order:
 # ╟─2ec89215-0634-498c-94ee-389b9b8d7034
 # ╠═7c79cb6a-00cc-49d0-8110-bf849ae02c8c
@@ -347,7 +344,7 @@ end
 # ╟─68f12708-a5b2-4765-be56-9103cbb69c16
 # ╠═13a069be-9b1a-48c1-b289-83671207d087
 # ╠═d747dbb9-caf9-4fce-85b8-a0698c749f32
-# ╟─b9e889d9-5edb-498e-b560-fd699fe2de73
+# ╠═b9e889d9-5edb-498e-b560-fd699fe2de73
 # ╟─4016352d-ab26-4385-ba05-e57416df55c3
 # ╟─35d612fb-b859-42b1-9ea2-ae90ad01dfb8
 # ╟─abccd9a2-0d1a-4562-89d7-3b0a0e5b2267
@@ -355,10 +352,9 @@ end
 # ╟─23d028df-dbd7-4188-ae74-7da3c071e549
 # ╟─e702092a-0b2e-475e-8dc1-51308be65c64
 # ╟─7b58b65f-a35a-461e-a4b6-4cb16646642e
-# ╟─a347066c-c48e-42e9-a051-ac530d9bb7eb
-# ╟─96528e86-2a83-4b59-a412-de66b4475d52
+# ╠═a347066c-c48e-42e9-a051-ac530d9bb7eb
+# ╠═96528e86-2a83-4b59-a412-de66b4475d52
 # ╟─084b9228-5deb-4cef-bf6b-d962ca884dbe
 # ╟─4e829cbd-3d8c-4ef6-8898-1af9443f01ac
 # ╟─df6821d6-9c47-4d12-a62f-1b458c5ac6ba
 # ╠═ef49613a-22c3-4775-b903-665544c77bdf
-# ╠═b5b8fe35-8c55-4b4d-a8c3-c1e87af38835
