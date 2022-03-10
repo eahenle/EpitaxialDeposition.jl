@@ -47,7 +47,7 @@ md"""
 # ╔═╡ 25f27d9b-4acb-4803-a2c1-845801de7ba7
 md"""
 !!! warning \"Caveat Quaesitor\"
-	The runtime is approximately 10 seconds per simulated second.  
+	The runtime is approximately 10-20 seconds per simulated second.  
 	
 	Yep.  It's literally faster to do the experiment!
 """
