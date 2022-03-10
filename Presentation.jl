@@ -4,9 +4,6 @@
 using Markdown
 using InteractiveUtils
 
-# ╔═╡ 185fce88-b4c3-4be7-84b4-7f2ce3db1c06
-using DataFrames, PlutoUI
-
 # ╔═╡ bdf2b950-8afe-11ec-1732-61696ed36c9b
 md"
 # CHE 540 - Chemical Reactions I 
@@ -196,11 +193,8 @@ md"""
 # ╟─0ae4bec3-f8dd-4c99-b168-a3d48b113dda
 # ╟─60fccd3e-e87b-49b5-b073-dc16dc4e0c92
 # ╟─e2678619-a552-4397-af1b-f657c03c58a8
-# ╠═b29aeadf-4f5a-42a3-942e-22559a7cab21
+# ╟─b29aeadf-4f5a-42a3-942e-22559a7cab21
 # ╠═7a941657-7ae6-4eaf-8e06-7a6271a47a2d
 # ╠═695d2cd2-41dc-4749-a89e-fa187667bf47
 # ╠═840fa195-ee05-41a7-a2f3-6ac04b538ccb
 # ╠═a50df40f-0a00-456d-ba70-b5ecc637e6b4
-# ╟─b29aeadf-4f5a-42a3-942e-22559a7cab21
-# ╟─00000000-0000-0000-0000-000000000001
-# ╟─00000000-0000-0000-0000-000000000002
