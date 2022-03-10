@@ -85,12 +85,9 @@ end
 # ╔═╡ c1d044da-26df-4eb4-96fa-a16349a2d396
 # run a Catalyst sim with call-outs to JFVM
 
-# ╔═╡ 609e3a37-5404-4fc7-833d-8e2c934bca12
-c = ones(Nx + 2, Ny + 2)
-
 # ╔═╡ f00a16d4-9fbd-4ef8-aa0f-93476443c372
-function transport_step(m::MeshStructure, D::Float64, c₀::Matrix{Float64}, Nx::Int; 
-		N_steps=5, Lx=30., Ly=30.)
+function transport_step(m::MeshStructure, D::Float64, c₀::Matrix{Float64}, Nx::Int, 
+		Δc::Float64; N_steps=5, Lx=30., Ly=30.)
     # Define boundary conditions
     BC = createBC(m)
 
@@ -113,7 +110,7 @@ function transport_step(m::MeshStructure, D::Float64, c₀::Matrix{Float64}, Nx:
     BC.top.c[1,:] .= 0.0 
     BC.bottom.c[1,:] .= 0.0
 
-    BC.bottom.c[EpitaxialDeposition.wafer_boundary(Nx, Lx, EpitaxialDeposition.PARAMS[:reactor][:wafer_diameter]), 1] .= -1.0
+    BC.bottom.c[EpitaxialDeposition.wafer_boundary(Nx, Lx, EpitaxialDeposition.PARAMS[:reactor][:wafer_diameter]), 1] .= -Δc
 
     # Give a value for the diffusion coefficient based on current system
     D_cell = createCellVariable(m, D) # assign the diffusion coefficient as a variable to each cell of the mesh
@@ -149,16 +146,17 @@ function transport_step(m::MeshStructure, D::Float64, c₀::Matrix{Float64}, Nx:
 return c
 end
 
-# ╔═╡ 01944257-912a-49c3-a8eb-cfa25a7627ee
-transport_step(mesh, D[:H₂], c, Nx)
-
 # ╔═╡ 2c89c6df-1e94-43b2-9624-280463aaf2b9
 function coupled_simulation()
+	# arrays to store time points
 	kinetics = []
 	transport = []
+	# variables to store states
 	u = u₀
 	c = Dict([key => ones(Nx + 2, Ny + 2) * value for (key, value) in c₀])
+	Δc = Dict([key => 1e-32 for (key, value) in c₀]) # pseudo-zero
 
+	# book-keeping variables
 	colnames = Symbol.(String.([u[1] for u in u₀]) .* "(t)")
 	sol_to_u = Dict([name => Symbol(chop(String(name), tail=3)) for name in colnames])
 
@@ -167,19 +165,20 @@ function coupled_simulation()
 		# run the kinetic model
 		k_sol = solve(ODEProblem(deposition_rxn_network, u, ((t - 1) * Δt, t * Δt)), Tsit5(), saveat=EpitaxialDeposition.PARAMS[:Δt][:Catalyst], maxiters=1e8)
 
+		# run the transport models
+		t_sol = Dict([key => transport_step(mesh, value, c[key], Nx, Δc[key]) for (key, value) in D])
+
 		# update the kinetic model's state for next iteration
 		u = [sol_to_u[col] => DataFrame(k_sol)[end, col] for col in colnames]
 
-		# append the kinetics data
-		push!(kinetics, k_sol)
-
-		# run the transport models
-		t_sol = Dict([key => transport_step(mesh, value, c[key], Nx) for (key, value) in D])
-
-		# update the transport models' state for next iteration
+		# update the transport models' cell states for next iteration
 		c = Dict([species => cell.value[2:end-1, 2:end-1] for (species, cell) in t_sol])
 
-		# append the transport data
+		# update the transport models' boundary states for next iteration
+		Δc = Dict([key => 1. for (key, value) in c₀])
+
+		# append the output data
+		push!(kinetics, k_sol)
 		push!(transport, t_sol)
 	end
 
@@ -250,8 +249,6 @@ end
 # ╠═4411f086-c12c-45c4-a5b0-bd6d9ac2bcd9
 # ╠═54e026fa-12c1-4906-b96e-88b11eabfb38
 # ╠═c1d044da-26df-4eb4-96fa-a16349a2d396
-# ╠═609e3a37-5404-4fc7-833d-8e2c934bca12
-# ╠═01944257-912a-49c3-a8eb-cfa25a7627ee
 # ╠═f00a16d4-9fbd-4ef8-aa0f-93476443c372
 # ╠═2c89c6df-1e94-43b2-9624-280463aaf2b9
 # ╠═0c83de9c-9f4e-4f3c-97e1-efe01fecc4a3
