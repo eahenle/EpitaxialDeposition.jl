@@ -186,6 +186,21 @@ md"""
 - **Equilibrium rate constant data for ``SiCl_4 + Si(s) \leftrightarrow SiCl_2``:** *Experimentelle Untersuchung des Reaktionsgleichgewichtes SiCl₄(g) + Si(f) = 2SiCl₂(g) nach der Stromungshmethode*, Von R. Teichmann, E. Wolf
 """
 
+# ╔═╡ 00000000-0000-0000-0000-000000000001
+PLUTO_PROJECT_TOML_CONTENTS = """
+[deps]
+"""
+
+# ╔═╡ 00000000-0000-0000-0000-000000000002
+PLUTO_MANIFEST_TOML_CONTENTS = """
+# This file is machine-generated - editing it directly is not advised
+
+julia_version = "1.7.1"
+manifest_format = "2.0"
+
+[deps]
+"""
+
 # ╔═╡ Cell order:
 # ╟─bdf2b950-8afe-11ec-1732-61696ed36c9b
 # ╟─82f306b3-0039-406e-a99a-68303ecdcfac
@@ -198,3 +213,5 @@ md"""
 # ╠═695d2cd2-41dc-4749-a89e-fa187667bf47
 # ╠═840fa195-ee05-41a7-a2f3-6ac04b538ccb
 # ╠═a50df40f-0a00-456d-ba70-b5ecc637e6b4
+# ╟─00000000-0000-0000-0000-000000000001
+# ╟─00000000-0000-0000-0000-000000000002
