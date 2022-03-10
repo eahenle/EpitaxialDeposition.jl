@@ -23,6 +23,7 @@ begin
 	using CairoMakie
 	using JFVM
 	using PlutoUI
+	using StatsBase
 end
 
 # ╔═╡ ceac564a-9ff6-11ec-0ba7-13f6890e2021
@@ -30,14 +31,32 @@ md"""
 # Coupled Kinetics and Transport
 """
 
+# ╔═╡ 632a0cc6-6c8f-4a93-b72c-d6802fa3fef4
+md"""
+!!! note \" Linguistic Side-Note \"
+	In German, compound words are often used to express novel ideas. Example: when one is simultaneously proud and embarrassed, the feeling is called "Schamstolz" (portmanteau of the words for "shame" and "pride").
+
+	This code fills me with Schamstolz.
+"""
+
 # ╔═╡ 4411f086-c12c-45c4-a5b0-bd6d9ac2bcd9
-# set up initial conditions and static variables
+md"""
+## Set up initial conditions and static variables
+"""
+
+# ╔═╡ 25f27d9b-4acb-4803-a2c1-845801de7ba7
+md"""
+!!! warning \"Caveat Quaesitor\"
+	The runtime is approximately 10 seconds per simulated second.  
+	
+	Yep.  It's literally faster to do the experiment!
+"""
 
 # ╔═╡ 54e026fa-12c1-4906-b96e-88b11eabfb38
 begin
 	y_SiCl₄ = 0.5
-	Psys = 1.
-	temperature = 1100.
+	Psys = 760.
+	temperature = 1000.
 	
 	u₀ = [
 	        :SiCl₄   => (y_SiCl₄ * Psys) / EpitaxialDeposition.PARAMS[:R][:L_Torr_mol_K] / temperature,
@@ -48,46 +67,65 @@ begin
 	        :SiCl₂   => 0.0,
 	        :k       => EpitaxialDeposition.PARAMS[:kKp][:k],
 	        :T       => temperature
-	    ]
-	
-	t_max = 10.  
+	]
 
-	timesteps = 2
+	timesteps = 5
 
 	Δt = 1
 
 	Lx = 30
 	Ly = 30
 	Nx = Ny = 150
-	x = [1:Nx...] * Lx / Nx
-	y = [1:Ny...] * Ly / Ny
+	x  = [1:Nx...] * Lx / Nx
+	y  = [1:Ny...] * Ly / Ny
 
 	wafer_diameter = 10
 
 	D = Dict(
-		:SiCl₄ => DAB(:SiCl₄, :H₂),
-		:HCl => DAB(:HCl, :H₂),
-		:H₂ => DAB(:H₂, :H₂),
-		:SiCl₂ => DAB(:SiCl₂, :H₂)
+		:SiCl₄ 	=> 10 * DAB(:SiCl₄, :H₂),
+		:HCl 	=> 10 * DAB(:HCl, :H₂),
+		:H₂ 	=> 10 * DAB(:H₂, :H₂),
+		:SiCl₂ 	=> 10 * DAB(:SiCl₂, :H₂)
 	)
 
 	# initial concentration of each species
+	local udict = Dict(u₀)
 	c₀ = Dict([
-		:H₂ => 1.,
-		:SiCl₄ => 1.,
-		:SiCl₂ => 0.,
-		:HCl => 0.
+		:H₂ 	=> udict[:H₂],
+		:SiCl₄ 	=> udict[:SiCl₄],
+		:SiCl₂ 	=> udict[:SiCl₂],
+		:HCl 	=> udict[:HCl]
 	])
 
 	mesh = createMesh2D(Nx + 2, Ny + 2, Lx, Ly)
-end
+
+	wafer_bounds = EpitaxialDeposition.wafer_boundary(Nx, Lx, wafer_diameter)
+
+	# book-keeping variables
+	colnames = Symbol.(String.([u[1] for u in u₀]) .* "(t)")
+	sol_to_u = Dict([name => Symbol(chop(String(name), tail=3)) for name in colnames])
+	u_to_sol = Dict([value => key for (key, value) in sol_to_u])
+end;
 
 # ╔═╡ c1d044da-26df-4eb4-96fa-a16349a2d396
-# run a Catalyst sim with call-outs to JFVM
+md"""
+## Run a coupled simulation with Catalyst/JFVM
+"""
+
+# ╔═╡ 2492cf1b-f352-46e1-8e2a-1e2877568b41
+try
+	LocalResource("dfd.png")
+catch
+	try
+		LocalResource("../dfd.png")
+	catch e
+		@warn e
+	end
+end
 
 # ╔═╡ f00a16d4-9fbd-4ef8-aa0f-93476443c372
 function transport_step(m::MeshStructure, D::Float64, c₀::Matrix{Float64}, Nx::Int, 
-		Δc::Float64; N_steps=5, Lx=30., Ly=30.)
+		ϕ::Float64; N_steps=5, Lx=30., Ly=30.)
     # Define boundary conditions
     BC = createBC(m)
 
@@ -110,7 +148,7 @@ function transport_step(m::MeshStructure, D::Float64, c₀::Matrix{Float64}, Nx:
     BC.top.c[1,:] .= 0.0 
     BC.bottom.c[1,:] .= 0.0
 
-    BC.bottom.c[EpitaxialDeposition.wafer_boundary(Nx, Lx, EpitaxialDeposition.PARAMS[:reactor][:wafer_diameter]), 1] .= -Δc
+    BC.bottom.c[wafer_bounds, 1] .= -ϕ
 
     # Give a value for the diffusion coefficient based on current system
     D_cell = createCellVariable(m, D) # assign the diffusion coefficient as a variable to each cell of the mesh
@@ -122,19 +160,7 @@ function transport_step(m::MeshStructure, D::Float64, c₀::Matrix{Float64}, Nx:
     M_diff = diffusionTerm(D_face) # matrix of diffusion term coefficients
     (M_bc, RHS_bc) = boundaryConditionTerm(BC) # matrix composed of coefficients and the right hand side for the BC
 
-    ### modify to be 1/5th of the timestep from Catalyst
-    
-    if Lx < Ly # calculate a time step based on the smaller length (for more resolution)
-    Δt = sqrt(Lx^2 / D) / N_steps # recommended time step calculation
-
-    else
-    Δt = sqrt(Ly^2 / D) / N_steps
-
-    end
-
-    # this code seems to be for taking discrete time steps forward, with size of Δt
-
-    ### parameterize the # of steps?
+	Δt = EpitaxialDeposition.PARAMS[:Δt][:JFVM]
     
     for i = 1:N_steps
         (M_t, RHS_t) = transientTerm(c, Δt, 1.0)
@@ -143,22 +169,18 @@ function transport_step(m::MeshStructure, D::Float64, c₀::Matrix{Float64}, Nx:
         c = solveLinearPDE(m, M, RHS)
     end
 
-return c
+	return c
 end
 
-# ╔═╡ 2c89c6df-1e94-43b2-9624-280463aaf2b9
+# ╔═╡ 059e8e10-d1d1-4499-b884-8ff8cec42bad
 function coupled_simulation()
 	# arrays to store time points
 	kinetics = []
 	transport = []
 	# variables to store states
-	u = u₀
-	c = Dict([key => ones(Nx + 2, Ny + 2) * value for (key, value) in c₀])
-	Δc = Dict([key => 1e-32 for (key, value) in c₀]) # pseudo-zero
-
-	# book-keeping variables
-	colnames = Symbol.(String.([u[1] for u in u₀]) .* "(t)")
-	sol_to_u = Dict([name => Symbol(chop(String(name), tail=3)) for name in colnames])
+	u = u₀ # surface concentration
+	c = Dict([key => ones(Nx + 2, Ny + 2) * value for (key, value) in c₀]) # cells
+	ϕ = Dict([key => 1e-32 for (key, value) in c₀]) # surface Δc (pseudo-zero)
 
 	# loop over time points
 	for t in 1:timesteps
@@ -166,16 +188,33 @@ function coupled_simulation()
 		k_sol = solve(ODEProblem(deposition_rxn_network, u, ((t - 1) * Δt, t * Δt)), Tsit5(), saveat=EpitaxialDeposition.PARAMS[:Δt][:Catalyst], maxiters=1e8)
 
 		# run the transport models
-		t_sol = Dict([key => transport_step(mesh, value, c[key], Nx, Δc[key]) for (key, value) in D])
-
-		# update the kinetic model's state for next iteration
-		u = [sol_to_u[col] => DataFrame(k_sol)[end, col] for col in colnames]
+		t_sol = Dict([key => transport_step(mesh, value, c[key], Nx, ϕ[key], N_steps=20) for (key, value) in D])
 
 		# update the transport models' cell states for next iteration
 		c = Dict([species => cell.value[2:end-1, 2:end-1] for (species, cell) in t_sol])
 
-		# update the transport models' boundary states for next iteration
-		Δc = Dict([key => 1. for (key, value) in c₀])
+		u_sol = Dict([sol_to_u[col] => DataFrame(k_sol)[end, col] for col in colnames])
+
+		# change in concentrations due to chemical reactions
+		old_u = Dict(u)
+		ϕ = Dict([species => new_u - old_u[species] for (species, new_u) in u_sol])
+		
+		for (species, ci) in c
+			c[species][wafer_bounds, 1] .+= ϕ[species] #- Δu[species]
+		end
+		
+		# update the kinetic model's state for next iteration
+		u′ = [
+	        :SiCl₄   => mean(c[:SiCl₄][wafer_bounds, 1]),
+	        :H₂      => mean(c[:H₂][wafer_bounds, 1]),
+	        :Si_dep  => u_sol[:Si_dep],
+	        :Si_etch => u_sol[:Si_etch],
+	        :HCl     => mean(c[:HCl][wafer_bounds, 1]), 
+	        :SiCl₂   => mean(c[:SiCl₂][wafer_bounds, 1]),
+	        :k       => u_sol[:k],
+	        :T       => u_sol[:T]
+	    ]
+		u = u′
 
 		# append the output data
 		push!(kinetics, k_sol)
@@ -195,14 +234,16 @@ end
 kinetics, transport, δ = coupled_simulation();
 
 # ╔═╡ 48063896-50eb-4e95-96a8-c563e8baaf8c
-# visualize the results
+md"""
+## Results
+"""
 
 # ╔═╡ 5296cf87-ee7f-483b-ba52-996ea974aaec
 begin
     local fig = Figure()
     local ax = Axis(
         fig[1,1],
-        title = "Gas-Phase Species",
+        title = "Surface Gas-Film Species",
         ylabel="Concentration [mmol/L]",
         xlabel="Time [s]"
     )
@@ -245,14 +286,17 @@ end
 
 # ╔═╡ Cell order:
 # ╟─ceac564a-9ff6-11ec-0ba7-13f6890e2021
+# ╟─632a0cc6-6c8f-4a93-b72c-d6802fa3fef4
 # ╠═011c70e0-83e8-4ec7-9dc7-19c9dd69142e
-# ╠═4411f086-c12c-45c4-a5b0-bd6d9ac2bcd9
+# ╟─4411f086-c12c-45c4-a5b0-bd6d9ac2bcd9
+# ╟─25f27d9b-4acb-4803-a2c1-845801de7ba7
 # ╠═54e026fa-12c1-4906-b96e-88b11eabfb38
-# ╠═c1d044da-26df-4eb4-96fa-a16349a2d396
+# ╟─c1d044da-26df-4eb4-96fa-a16349a2d396
+# ╟─2492cf1b-f352-46e1-8e2a-1e2877568b41
 # ╠═f00a16d4-9fbd-4ef8-aa0f-93476443c372
-# ╠═2c89c6df-1e94-43b2-9624-280463aaf2b9
+# ╠═059e8e10-d1d1-4499-b884-8ff8cec42bad
 # ╠═0c83de9c-9f4e-4f3c-97e1-efe01fecc4a3
-# ╠═48063896-50eb-4e95-96a8-c563e8baaf8c
-# ╠═5296cf87-ee7f-483b-ba52-996ea974aaec
-# ╠═600ebffc-d978-4813-9d06-67208b11a61d
+# ╟─48063896-50eb-4e95-96a8-c563e8baaf8c
+# ╟─5296cf87-ee7f-483b-ba52-996ea974aaec
+# ╟─600ebffc-d978-4813-9d06-67208b11a61d
 # ╠═7da4da48-be95-4df4-ba69-8927d02da60b
