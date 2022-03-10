@@ -39,7 +39,7 @@ end
 
 
 function plot_species_profiles(sol, x, y)
-    fig = CairoMakie.Figure()
+    fig = Figure()
 
     Axis(fig[1,1], title="H₂")
     heatmap!(x, y, sol[:H₂].value)

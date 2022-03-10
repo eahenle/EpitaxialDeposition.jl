@@ -16,14 +16,19 @@ end
 
 # ╔═╡ d2eb8940-9b16-11ec-1d74-3bc00f5f950f
 begin
-	import Pkg
-	Pkg.activate(".")
-	using EpitaxialDeposition
-	using JFVM
-	using CairoMakie
-	using StatsBase
-	using PlutoUI
+    import Pkg
+    Pkg.activate(".")
+    using EpitaxialDeposition
+    using CairoMakie
+    using StatsBase
+    using PlutoUI
+    using JFVM
 end
+
+# ╔═╡ 6584c779-4b89-40df-98c9-0dbf00ff6081
+md"""
+# Mass Transport
+"""
 
 # ╔═╡ 6e4302dc-b2ce-4d8f-809b-078f2c39c2dc
 md"""
@@ -71,27 +76,27 @@ $Ω = \frac{a}{b\kappa T/\epsilon + c} + d$
 begin
 
     xs = range(
-		EpitaxialDeposition.WELTY_X[1], EpitaxialDeposition.WELTY_X[end], length=150
-	)
+        EpitaxialDeposition.WELTY_X[1], EpitaxialDeposition.WELTY_X[end], length=150
+    )
 
-	rsquared = round(sum((Ω(EpitaxialDeposition.WELTY_X) .-
-		mean(EpitaxialDeposition.WELTY_Y)) .^ 2) / sum(((EpitaxialDeposition.WELTY_Y .- mean(EpitaxialDeposition.WELTY_Y)) .^ 2)), digits=3)
-	
+    rsquared = round(sum((Ω(EpitaxialDeposition.WELTY_X) .-
+        mean(EpitaxialDeposition.WELTY_Y)) .^ 2) / sum(((EpitaxialDeposition.WELTY_Y .- mean(EpitaxialDeposition.WELTY_Y)) .^ 2)), digits=3)
+    
     local fig = Figure()
     ax = Axis(
-		fig[1,1],
+        fig[1,1],
         title = "Least Squares Fit, R² = $rsquared",
         ylabel = "Collision Integral Ω",
         xlabel = "κT/ϵ"
-	)
+    )
 
     scatter!(
-		EpitaxialDeposition.WELTY_X, EpitaxialDeposition.WELTY_Y, label="Welty Data"
-	)
+        EpitaxialDeposition.WELTY_X, EpitaxialDeposition.WELTY_Y, label="Welty Data"
+    )
     lines!(xs, Ω(xs), color=:red, label="Interpolation")
 
-	fig[1, 2] = Legend(fig, ax)
-	
+    fig[1, 2] = Legend(fig, ax)
+    
     fig
 end
 
@@ -114,10 +119,10 @@ D_SiCl₂ = DAB(:SiCl₂, :H₂) # (dichlorosilane DAB)
 
 # ╔═╡ 99be578d-673b-4f82-b0e4-2cd3fed8b847
 D = Dict(
-	:SiCl₄ => D_SiCl₄,
-	:HCl => D_HCl,
-	:H₂ => D_H₂,
-	:SiCl₂ => D_SiCl₂
+    :SiCl₄ => D_SiCl₄,
+    :HCl => D_HCl,
+    :H₂ => D_H₂,
+    :SiCl₂ => D_SiCl₂
 );
 
 # ╔═╡ 680313b8-d39c-428b-adb5-a10dee051860
@@ -138,10 +143,10 @@ md"""
 # ╔═╡ 7abb2d83-c82e-4ad0-a4f6-0c9b67633f1d
 # initial concentration of each species
 c₀ = Dict([
-	:H₂ => 1.,
-	:SiCl₄ => 1.,
-	:SiCl₂ => 0.,
-	:HCl => 0.
+    :H₂ => 1.,
+    :SiCl₄ => 1.,
+    :SiCl₂ => 0.,
+    :HCl => 0.
 ])
 
 # ╔═╡ 77168336-8588-4f53-a236-cc517978455c
@@ -158,7 +163,7 @@ Wafer Diameter $(@bind wafer_diam PlutoUI.Slider(1.:40., default=15., show_value
 # ╔═╡ 7c259d4c-122c-4270-ad64-185b09be4a2f
 begin
     # generate uniform mesh, defined w/ size of domain and # cells in each direction
-	Nx = round(Int, Lx / vox) # number of cells in x direction
+    Nx = round(Int, Lx / vox) # number of cells in x direction
     Ny = round(Int, Ly / vox) # numbers of cells in y direction    
     mesh = createMesh2D(Nx + 2, Ny + 2, Lx, Ly); # mesh
 
@@ -167,85 +172,18 @@ begin
     y_cell_reshape = [1:Ny...] * Ly / Ny
 end;
 
-# ╔═╡ 6a944590-be5a-498f-aaf0-8966f610dc61
-function trans_diff_Neumann(m::MeshStructure, D::Float64, c₀::Float64; N_steps=5)
-
-	    # Define our boundary conditions. Package/function defaults yield Neumann boundary conditions, though Dirichlet and Robin conditions are also supported, and each cell face can have a unique boundary condition
-	    BC = createBC(m)
-	
-	    # left and right boundary conditions for each coefficient in the boundary condition expression 
-	    
-	    #link: https://nbviewer.org/github/)simulkade/JFVM.jl/blob/master/examples/jfvm_tutorial.ipynb
-	    BC.left.a[:] .= 1.0 
-	    BC.right.a[:] .= 1.0
-	
-	    BC.left.b[:] .= 0.0
-	    BC.right.b[:] .= 0.0
-	
-	    BC.left.c[:] .= 0.0 
-	    BC.right.c[:] .= 0.0
-	
-	    # top and bottom boundary conditions for each coefficient
-	    BC.top.a[1,:] .= 1.0 
-	    BC.bottom.a[1,:] .= 1.0
-	
-	    BC.top.b[1,:] .= 0.0 
-	    BC.bottom.b[1,:] .= 0.0
-	
-	    BC.top.c[1,:] .= 0.0 
-	    BC.bottom.c[1,:] .= 0.0
-	
-	    BC.bottom.c[EpitaxialDeposition.wafer_boundary(Nx, Lx, EpitaxialDeposition.PARAMS[:reactor][:wafer_diameter]), 1] .= -1.0
-	        
-	
-	    # Give a value for the diffusion coefficient based on current system
-	    D = D # [cm²/s]
-	    D_cell = createCellVariable(m, D) # assign the diffusion coefficient as a variable to each cell of the mesh
-	    D_face = geometricMean(D_cell) # choose an averaging scheme, for how the diffusion coefficient on a cell face is calculated
-	    
-	    c = createCellVariable(m, c₀, BC) # assign the "initial" species concentration to cells [mol/L]
-	    
-	    # Discretize the problem and build our solution
-	    M_diff = diffusionTerm(D_face) # matrix of diffusion term coefficients
-	    (M_bc, RHS_bc) = boundaryConditionTerm(BC) # matrix composed of coefficients and the right hand side for the BC
-	
-	
-	
-	    ### modify to be 1/5th of the timestep from Catalyst
-	    
-	    if Lx < Ly # calculate a time step based on the smaller length (for more resolution)
-	    Δt = sqrt(Lx^2 / D) / N_steps # recommended time step calculation
-	
-	    else
-	    Δt = sqrt(Ly^2 / D) / N_steps
-	
-	    end
-	
-	    # this code seems to be for taking discrete time steps forward, with size of Δt
-	
-	    ### parameterize the # of steps?
-	    
-	    for i = 1:N_steps
-	        (M_t, RHS_t) = transientTerm(c, Δt, 1.0)
-	        M = M_t - M_diff + M_bc # adding together all sparse matrices of coefficients
-	        RHS = RHS_bc + RHS_t # add all RHS's to each other
-	        c = solveLinearPDE(m, M, RHS)
-	    end
-	
-	return c
-end
-
 # ╔═╡ 29f239fd-446b-4e84-acc7-4075914c5383
 begin
-	# set up and completely solve transport model
-	EpitaxialDeposition.PARAMS[:reactor][:wafer_diameter] = wafer_diam
-	sol = Dict([key => trans_diff_Neumann(mesh, value, c₀[key]) for (key, value) in D])
+    # set up and completely solve transport model
+    EpitaxialDeposition.PARAMS[:reactor][:wafer_diameter] = wafer_diam
+    sol = Dict([key => trans_diff_Neumann(mesh, value, c₀[key], Nx) for (key, value) in D])
 end;
 
 # ╔═╡ 9e4a46ec-b4c0-4cd5-8b76-a7ce3bea88db
 plot_species_profiles(sol, x_cell_reshape, y_cell_reshape)
 
 # ╔═╡ Cell order:
+# ╟─6584c779-4b89-40df-98c9-0dbf00ff6081
 # ╠═d2eb8940-9b16-11ec-1d74-3bc00f5f950f
 # ╟─6e4302dc-b2ce-4d8f-809b-078f2c39c2dc
 # ╠═84ecce92-8d75-4a67-8f71-ca63a6da1137
@@ -264,6 +202,5 @@ plot_species_profiles(sol, x_cell_reshape, y_cell_reshape)
 # ╟─8075782d-3a72-4a43-833a-6f7a652f2cdf
 # ╠═7abb2d83-c82e-4ad0-a4f6-0c9b67633f1d
 # ╟─77168336-8588-4f53-a236-cc517978455c
-# ╟─9e4a46ec-b4c0-4cd5-8b76-a7ce3bea88db
-# ╟─29f239fd-446b-4e84-acc7-4075914c5383
-# ╠═6a944590-be5a-498f-aaf0-8966f610dc61
+# ╠═9e4a46ec-b4c0-4cd5-8b76-a7ce3bea88db
+# ╠═29f239fd-446b-4e84-acc7-4075914c5383
