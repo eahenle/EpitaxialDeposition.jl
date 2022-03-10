@@ -16,13 +16,13 @@ end
 
 # ╔═╡ d2eb8940-9b16-11ec-1d74-3bc00f5f950f
 begin
-	import Pkg
-	Pkg.activate(".")
-	using EpitaxialDeposition
-	using CairoMakie
-	using StatsBase
-	using PlutoUI
-	using JFVM
+    import Pkg
+    Pkg.activate(".")
+    using EpitaxialDeposition
+    using CairoMakie
+    using StatsBase
+    using PlutoUI
+    using JFVM
 end
 
 # ╔═╡ 6584c779-4b89-40df-98c9-0dbf00ff6081
@@ -76,27 +76,27 @@ $Ω = \frac{a}{b\kappa T/\epsilon + c} + d$
 begin
 
     xs = range(
-		EpitaxialDeposition.WELTY_X[1], EpitaxialDeposition.WELTY_X[end], length=150
-	)
+        EpitaxialDeposition.WELTY_X[1], EpitaxialDeposition.WELTY_X[end], length=150
+    )
 
-	rsquared = round(sum((Ω(EpitaxialDeposition.WELTY_X) .-
-		mean(EpitaxialDeposition.WELTY_Y)) .^ 2) / sum(((EpitaxialDeposition.WELTY_Y .- mean(EpitaxialDeposition.WELTY_Y)) .^ 2)), digits=3)
-	
+    rsquared = round(sum((Ω(EpitaxialDeposition.WELTY_X) .-
+        mean(EpitaxialDeposition.WELTY_Y)) .^ 2) / sum(((EpitaxialDeposition.WELTY_Y .- mean(EpitaxialDeposition.WELTY_Y)) .^ 2)), digits=3)
+    
     local fig = Figure()
     ax = Axis(
-		fig[1,1],
+        fig[1,1],
         title = "Least Squares Fit, R² = $rsquared",
         ylabel = "Collision Integral Ω",
         xlabel = "κT/ϵ"
-	)
+    )
 
     scatter!(
-		EpitaxialDeposition.WELTY_X, EpitaxialDeposition.WELTY_Y, label="Welty Data"
-	)
+        EpitaxialDeposition.WELTY_X, EpitaxialDeposition.WELTY_Y, label="Welty Data"
+    )
     lines!(xs, Ω(xs), color=:red, label="Interpolation")
 
-	fig[1, 2] = Legend(fig, ax)
-	
+    fig[1, 2] = Legend(fig, ax)
+    
     fig
 end
 
@@ -119,10 +119,10 @@ D_SiCl₂ = DAB(:SiCl₂, :H₂) # (dichlorosilane DAB)
 
 # ╔═╡ 99be578d-673b-4f82-b0e4-2cd3fed8b847
 D = Dict(
-	:SiCl₄ => D_SiCl₄,
-	:HCl => D_HCl,
-	:H₂ => D_H₂,
-	:SiCl₂ => D_SiCl₂
+    :SiCl₄ => D_SiCl₄,
+    :HCl => D_HCl,
+    :H₂ => D_H₂,
+    :SiCl₂ => D_SiCl₂
 );
 
 # ╔═╡ 680313b8-d39c-428b-adb5-a10dee051860
@@ -143,10 +143,10 @@ md"""
 # ╔═╡ 7abb2d83-c82e-4ad0-a4f6-0c9b67633f1d
 # initial concentration of each species
 c₀ = Dict([
-	:H₂ => 1.,
-	:SiCl₄ => 1.,
-	:SiCl₂ => 0.,
-	:HCl => 0.
+    :H₂ => 1.,
+    :SiCl₄ => 1.,
+    :SiCl₂ => 0.,
+    :HCl => 0.
 ])
 
 # ╔═╡ 77168336-8588-4f53-a236-cc517978455c
@@ -163,7 +163,7 @@ Wafer Diameter $(@bind wafer_diam PlutoUI.Slider(1.:40., default=15., show_value
 # ╔═╡ 7c259d4c-122c-4270-ad64-185b09be4a2f
 begin
     # generate uniform mesh, defined w/ size of domain and # cells in each direction
-	Nx = round(Int, Lx / vox) # number of cells in x direction
+    Nx = round(Int, Lx / vox) # number of cells in x direction
     Ny = round(Int, Ly / vox) # numbers of cells in y direction    
     mesh = createMesh2D(Nx + 2, Ny + 2, Lx, Ly); # mesh
 
@@ -174,9 +174,9 @@ end;
 
 # ╔═╡ 29f239fd-446b-4e84-acc7-4075914c5383
 begin
-	# set up and completely solve transport model
-	EpitaxialDeposition.PARAMS[:reactor][:wafer_diameter] = wafer_diam
-	sol = Dict([key => trans_diff_Neumann(mesh, value, c₀[key], Nx) for (key, value) in D])
+    # set up and completely solve transport model
+    EpitaxialDeposition.PARAMS[:reactor][:wafer_diameter] = wafer_diam
+    sol = Dict([key => trans_diff_Neumann(mesh, value, c₀[key], Nx) for (key, value) in D])
 end;
 
 # ╔═╡ 9e4a46ec-b4c0-4cd5-8b76-a7ce3bea88db
