@@ -246,7 +246,6 @@ begin
     local fig = Figure()
     local ax = Axis(
         fig[1,1],
-        title="Forward Reaction Rate Constants",
         ylabel="Rate Constant Value [cm/s]",
         xlabel="Temperature [K]"
     )
@@ -306,7 +305,7 @@ end
 # ╟─2ec89215-0634-498c-94ee-389b9b8d7034
 # ╠═7c79cb6a-00cc-49d0-8110-bf849ae02c8c
 # ╟─036cb0e3-e198-49f7-8221-3593fbeebb95
-# ╠═4842f48e-3d89-4104-b015-c383e0c63072
+# ╟─4842f48e-3d89-4104-b015-c383e0c63072
 # ╟─d7f3703a-dee2-46ce-a052-92d44938c965
 # ╟─1b12f164-be6e-444c-bba8-c27b1cccb730
 # ╟─abb094af-f9c7-42a5-bdc7-d033ac9a5d72
